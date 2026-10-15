@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "careerquest-api"
+version = "0.1.0"
+description = "CareerQuest API and deterministic simulation services"
+requires-python = ">=3.9"
+dependencies = [
+  "fastapi==0.115.12",
+  "httpx==0.28.1",
+  "pydantic==2.11.4",
+  "pydantic-settings==2.9.1",
+  "python-multipart==0.0.20",
+  "uvicorn[standard]==0.34.2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.3.5",
+  "pytest-cov==6.1.1",
+  "ruff==0.11.10",
+]
+resume = [
+  "PyMuPDF==1.25.5",
+  "pypdf==5.5.0",
+  "python-docx==1.1.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008", "UP007"]

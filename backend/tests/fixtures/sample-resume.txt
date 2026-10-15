@@ -1,0 +1,14 @@
+Jordan Example
+
+Education
+State University, Bachelor of Science in Information Systems
+
+Experience
+Business Analytics Intern, Example Company
+Created weekly dashboards and presented findings to project leaders.
+
+Skills
+Python, SQL, Excel, Tableau, Communication
+
+Projects
+Built a student-success data dashboard.
