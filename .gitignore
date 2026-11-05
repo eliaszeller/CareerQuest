@@ -8,7 +8,10 @@ backend/careerquest.db
 backend/tmp/
 frontend/node_modules/
 frontend/dist/
+dist/
 frontend/coverage/
+backend/.coverage
+*.tsbuildinfo
 playwright-report/
 test-results/
 .DS_Store
