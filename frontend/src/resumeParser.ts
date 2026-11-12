@@ -172,12 +172,44 @@ export function buildLocalDraft(text: string): LocalResumeDraft {
   };
 }
 
+type PdfTextFragment = { str: string; transform: number[]; hasEOL?: boolean };
+
+export function pdfTextToLines(items: PdfTextFragment[]) {
+  const lines: string[] = [];
+  let current: PdfTextFragment[] = [];
+  let currentY: number | null = null;
+
+  const flush = () => {
+    const line = current
+      .sort((left, right) => left.transform[4] - right.transform[4])
+      .map((item) => item.str.trim())
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (line) lines.push(line);
+    current = [];
+    currentY = null;
+  };
+
+  for (const item of items) {
+    const y = item.transform[5];
+    if (currentY !== null && Math.abs(y - currentY) > 2) flush();
+    current.push(item);
+    currentY = currentY === null ? y : (currentY + y) / 2;
+    if (item.hasEOL) flush();
+  }
+  flush();
+  return lines;
+}
+
 async function extractPdf(buffer: ArrayBuffer) {
   const document = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
   const pages: string[] = [];
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
     const content = await (await document.getPage(pageNumber)).getTextContent();
-    pages.push(content.items.map((item) => "str" in item ? item.str : "").join(" "));
+    const fragments = content.items.filter((item): item is typeof item & PdfTextFragment => "str" in item && "transform" in item);
+    pages.push(pdfTextToLines(fragments).join("\n"));
   }
   return pages.join("\n");
 }
