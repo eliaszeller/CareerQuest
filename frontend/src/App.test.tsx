@@ -79,6 +79,18 @@ describe("résumé education formatting", () => {
       details: ["Relevant coursework: Machine Learning in Python; NLP for Healthcare Analytics"],
     }]);
   });
+
+  it("separates an institution from a location on the same PDF row", () => {
+    expect(groupEducation([
+      "University of Colorado Boulder - Leeds School of Business  Boulder, CO",
+      "MS, Business Analytics (Healthcare Analytics Focus)",
+      "Expected May 2027",
+    ])[0]).toMatchObject({
+      institution: "University of Colorado Boulder - Leeds School of Business",
+      location: "Boulder, CO",
+      degree: "MS, Business Analytics (Healthcare Analytics Focus)",
+    });
+  });
 });
 
 describe("résumé experience formatting", () => {
@@ -100,6 +112,31 @@ describe("résumé experience formatting", () => {
       ],
     }]);
   });
+
+  it("recognizes employers when PDF extraction puts the location on the same row", () => {
+    expect(groupExperience([
+      "Mike Maroone Automotive  Colorado Springs, CO",
+      "Business Analyst Intern",
+      "• Analyze more than $100M in vehicle inventory.",
+      "Amazon  Colorado Springs, CO",
+      "Area Manager | Management and Operations Intern · Jun 2025-Jun 2026",
+      "• Designed Excel and VBA reporting workflows.",
+    ])).toEqual([
+      {
+        company: "Mike Maroone Automotive",
+        location: "Colorado Springs, CO",
+        role: "Business Analyst Intern",
+        accomplishments: ["Analyze more than $100M in vehicle inventory."],
+      },
+      {
+        company: "Amazon",
+        location: "Colorado Springs, CO",
+        role: "Area Manager | Management and Operations Intern",
+        date: "Jun 2025-Jun 2026",
+        accomplishments: ["Designed Excel and VBA reporting workflows."],
+      },
+    ]);
+  });
 });
 
 describe("organization logo matching", () => {
@@ -107,6 +144,7 @@ describe("organization logo matching", () => {
     expect(resolveOrganizationDomain("University of Colorado Boulder - Leeds School of Business")).toBe("colorado.edu");
     expect(resolveOrganizationDomain("Mike Maroone Automotive")).toBe("mikemaroonecolorado.com");
     expect(resolveOrganizationDomain("Amazon")).toBe("amazon.com");
+    expect(resolveOrganizationDomain("Amazon  Colorado Springs, CO")).toBe("amazon.com");
   });
 
   it("leaves unknown organizations for provider name lookup", () => {

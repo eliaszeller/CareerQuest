@@ -60,7 +60,10 @@ const ORGANIZATION_DOMAINS: Record<string, string> = {
 
 export function resolveOrganizationDomain(name: string): string | null {
   const normalized = name.toLowerCase().replace(/[.,]/g, "").replace(/\s+/g, " ").trim();
-  return ORGANIZATION_DOMAINS[normalized] ?? null;
+  const match = Object.keys(ORGANIZATION_DOMAINS)
+    .sort((left, right) => right.length - left.length)
+    .find((organization) => normalized === organization || normalized.includes(organization));
+  return match ? ORGANIZATION_DOMAINS[match] : null;
 }
 
 function organizationInitials(name: string) {
@@ -69,18 +72,19 @@ function organizationInitials(name: string) {
 }
 
 function OrganizationLogo({ name }: { name: string }) {
-  const [failed, setFailed] = useState(false);
+  const [sourceIndex, setSourceIndex] = useState(0);
   const token = import.meta.env.VITE_LOGO_DEV_TOKEN?.trim();
   const domain = resolveOrganizationDomain(name);
   const identifier = domain || `name/${encodeURIComponent(name)}`;
-  const source = token
-    ? `https://img.logo.dev/${identifier}?token=${encodeURIComponent(token)}&size=96&format=png`
-    : domain
-      ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
-      : null;
+  const sources = [
+    token ? `https://img.logo.dev/${identifier}?token=${encodeURIComponent(token)}&size=96&format=png` : null,
+    domain ? `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(`https://${domain}`)}&sz=128` : null,
+    domain ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico` : null,
+  ].filter((source): source is string => Boolean(source));
+  const source = sources[sourceIndex];
 
-  if (!source || failed) return <span className="organization-fallback" aria-label={`${name} logo unavailable`}>{organizationInitials(name)}</span>;
-  return <img className="organization-logo" src={source} alt={`${name} logo`} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
+  if (!source) return <span className="organization-fallback" aria-label={`${name} logo unavailable`}>{organizationInitials(name)}</span>;
+  return <img className="organization-logo" src={source} alt={`${name} logo`} loading="lazy" referrerPolicy="no-referrer" onError={() => setSourceIndex((index) => index + 1)} />;
 }
 
 export function groupEducation(values: string[]): EducationRecord[] {
@@ -92,7 +96,12 @@ export function groupEducation(values: string[]): EducationRecord[] {
 
   for (const value of values) {
     if (institutionPattern.test(value)) {
-      records.push({ institution: value.replace(/[.,]+$/, ""), details: [] });
+      const locationMatch = value.match(/(?:\s+[-–—|]\s+|\s{2,})([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3},\s*[A-Z]{2})$/);
+      records.push({
+        institution: (locationMatch ? value.slice(0, locationMatch.index).trim() : value).replace(/[.,]+$/, ""),
+        location: locationMatch?.[1],
+        details: [],
+      });
       continue;
     }
     const current = records.at(-1);
@@ -127,15 +136,38 @@ export function groupExperience(values: string[]): ExperienceRecord[] {
   const datePattern = /(?:19|20)\d{2}|present/i;
   let index = 0;
   while (index < values.length) {
-    if (index + 1 < values.length && locationPattern.test(values[index + 1])) {
-      records.push({ company: values[index].replace(/[.,]+$/, ""), location: values[index + 1], accomplishments: [] });
-      index += 2;
+    const rawValue = values[index].replace(/^\uf0b7\s*/, "• ").trim();
+    const combinedLocation = rawValue.match(/^(.*?)(?:\s+[-–—|]\s+|\s{2,})([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3},\s*[A-Z]{2})$/);
+    const nextValue = values[index + 1]?.trim() ?? "";
+    const knownOrganization = resolveOrganizationDomain(rawValue) !== null;
+    const companyLike = !rawValue.startsWith("•") && !datePattern.test(rawValue) && (
+      knownOrganization ||
+      Boolean(combinedLocation) ||
+      /\b(?:automotive|amazon|guard|company|group|corp(?:oration)?|inc|llc|hospital|health|university|college|school|agency|department)\b/i.test(rawValue)
+    );
+    if (companyLike) {
+      records.push({
+        company: (combinedLocation?.[1] ?? rawValue).replace(/[.,]+$/, "").trim(),
+        location: combinedLocation?.[2],
+        accomplishments: [],
+      });
+      index += 1;
+      if (!combinedLocation && locationPattern.test(nextValue)) {
+        records[records.length - 1].location = nextValue;
+        index += 1;
+      }
       continue;
     }
     const current = records.at(-1);
     if (!current) { index += 1; continue; }
-    const value = values[index].replace(/^\uf0b7\s*/, "• ");
-    if (!current.role && !value.startsWith("•") && !datePattern.test(value)) current.role = value;
+    const value = rawValue;
+    if (!current.role && !value.startsWith("•")) {
+      const dateStart = value.search(/\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|(?:19|20)\d{2}|Present)\b/i);
+      if (dateStart > 0) {
+        current.role = value.slice(0, dateStart).replace(/[|·\s-]+$/, "").trim();
+        current.date = value.slice(dateStart).trim();
+      } else current.role = value;
+    }
     else if (!current.date && !value.startsWith("•") && datePattern.test(value)) current.date = value;
     else if (value.startsWith("•")) current.accomplishments.push(value.replace(/^•\s*/, ""));
     else if (current.accomplishments.length) current.accomplishments[current.accomplishments.length - 1] += ` ${value}`;
