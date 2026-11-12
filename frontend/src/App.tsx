@@ -2,6 +2,7 @@ import { useState } from "react";
 import characterSheet from "./assets/career-character-sheet-original.png";
 import skiingCharacterSheet from "./assets/career-character-skiing-side-profile.png";
 import resortMap from "./assets/careerquest-alpine-resort-map.png";
+import { processResumeLocally } from "./resumeParser";
 
 const journey = [
   { number: "01", label: "Build", text: "Turn your experiences, interests, and goals into an editable character." },
@@ -200,12 +201,8 @@ function ResumeUpload({ onBack, onManual, onComplete }: { onBack: () => void; on
     if (!file || !consent) return;
     setStatus("uploading");
     setError("");
-    const body = new FormData();
-    body.append("file", file);
     try {
-      const response = await fetch("/api/v1/resume/extract", { method: "POST", body });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.detail || "The résumé could not be processed.");
+      const payload = await processResumeLocally(file);
       setResult(payload as ResumeResult);
       setStatus("done");
     } catch (reason) {
@@ -247,7 +244,7 @@ function ResumeUpload({ onBack, onManual, onComplete }: { onBack: () => void; on
         <p className="kicker">Build from résumé</p>
         <h1 className="builder-title">Bring what you've already done.</h1>
         <p>Upload a résumé to create a draft profile. You will review everything before it becomes part of your character.</p>
-        <div className="privacy-callout"><strong>Before you upload</strong><span>PDF, DOCX, or UTF-8 TXT · Maximum 5 MB · Temporary files are deleted immediately after processing. Remove sensitive details you do not want processed.</span></div>
+        <div className="privacy-callout"><strong>Private browser processing</strong><span>PDF, DOCX, or UTF-8 TXT · Maximum 5 MB · Your résumé stays on this device and is not uploaded to a server.</span></div>
         <label className="file-drop" htmlFor="resume-file">
           <span aria-hidden="true">↥</span>
           <strong>{file ? file.name : "Choose your résumé"}</strong>
@@ -256,7 +253,7 @@ function ResumeUpload({ onBack, onManual, onComplete }: { onBack: () => void; on
         <input className="visually-hidden" id="resume-file" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setStatus("idle"); setError(""); }} />
         <label className="consent-row">
           <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
-          <span>I understand the document will be processed into an editable draft and the temporary file will be deleted.</span>
+          <span>I understand the document will be processed locally into an editable draft.</span>
         </label>
         {error && <p className="upload-error" role="alert">{error}</p>}
         <button className="primary-button upload-button" type="button" disabled={!file || !consent || status === "uploading"} onClick={upload}>{status === "uploading" ? "Processing securely…" : "Process my résumé →"}</button>

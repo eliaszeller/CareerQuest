@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "4.4.1",
-    "vite": "6.4.4",
-    "typescript": "5.8.3",
+    "mammoth": "^1.13.0",
+    "pdfjs-dist": "^6.5.438",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "typescript": "5.8.3",
+    "vite": "6.4.4"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "6.6.3",
