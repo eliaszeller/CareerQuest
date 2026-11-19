@@ -29,7 +29,7 @@ Do these in order. Steps 1 to 4 get the app running. Steps 5 to 8 add the real c
 5. Build the O\*NET database.
 6. Add the LinkedIn job postings.
 7. Train the résumé classifier.
-8. Add the fine-tuned embedder.
+8. Download the fine-tuned embedder.
 
 ### 1. Prerequisites
 
@@ -102,19 +102,24 @@ This writes `backend/models/resume_classifier.joblib`. Don't commit or share Res
 
 ### 8. Fine-tuned embedder
 
-The trained model is not in git. To get it, do one of these:
-
-- **Ask James for `careerquest-embedder.zip`.** This is quicker.
-- **Train it yourself.** From `backend`, run `python scripts/build_finetune_pairs.py`. Then run `notebooks/finetune_embedder.ipynb` on Google Colab with a GPU runtime, uploading `corpus.jsonl`, `train.jsonl` and `eval.jsonl` from `data/processed/finetune/`. It takes about 2 minutes on an A100 and 15 minutes on a free T4.
-
-Unzip it so the files sit directly in `backend/models/embedder/` (that folder should contain `config.json`). Then install the extra and check it:
+The trained model is too large for git, so it's published as a GitHub Release asset. From `backend`, with the venv active:
 
 ```bash
+curl -L -o careerquest-embedder.zip https://github.com/eliaszeller/CareerQuest/releases/download/mvp-model/careerquest-embedder.zip
+python -m zipfile -e careerquest-embedder.zip models/
+mv models/careerquest-embedder models/embedder
+rm careerquest-embedder.zip
 python -m pip install -e ".[finetune]"
-python scripts/eval_retrieval.py --model models/embedder    # expect recall@5 of about 0.82
+python scripts/eval_retrieval.py --model models/embedder    # optional; needs steps 5-6 and build_finetune_pairs.py
 ```
 
+You can also download the zip from the repo's Releases page. Unzip it, rename the `careerquest-embedder` folder to `embedder`, and move it into `backend/models/`. Check that `backend/models/embedder/config.json` exists, since a common mistake is ending up with one folder too many.
+
 Restart the backend. The first résumé upload afterwards takes about a minute while occupation vectors are cached. Without the embedder, résumé suggestions fall back to TF-IDF.
+
+**License:** the model is fine-tuned from `BAAI/bge-small-en-v1.5` (MIT) on pairs derived from the LinkedIn Job Postings dataset (arshkon, CC BY-SA 4.0) and O\*NET 31.0 (CC BY 4.0). Share it only under CC BY-SA 4.0, with credit to those sources.
+
+To retrain it instead: from `backend`, run `python scripts/build_finetune_pairs.py`. Then run `notebooks/finetune_embedder.ipynb` on Google Colab with a GPU runtime, uploading `corpus.jsonl`, `train.jsonl` and `eval.jsonl` from `data/processed/finetune/`. It takes about 2 minutes on an A100 and 15 minutes on a free T4.
 
 ## Next step for the group: AI-written explanations
 
