@@ -111,3 +111,16 @@ See [docs/architecture.md](docs/architecture.md) and [docs/project-plan.md](docs
 The optional Career survey offers 30 original statements in six sections, explainable exploration across seven fields, and John Business as the mascot. Selected fields carry into quest role suggestions. [Question set and scoring notes](docs/career-survey-mvp.md).
 
 After editing the canonical survey JSON or response schema, run `python backend/scripts/export_survey_contract.py` from the repository root with the backend environment active. CI checks generated catalog and contract consistency.
+
+## Future improvements
+
+The main open items are below. Details and the reasons for each are in [docs/FUTURE_IMPROVEMENTS.md](docs/FUTURE_IMPROVEMENTS.md).
+
+- **AI-written explanations:** connect a local text model (for example Ollama with `qwen3:8b`) through `TEXT_MODEL_URL` and `TEXT_MODEL_NAME` in `.env`. Without one, "Why this could fit" shows a standard summary built from the same facts.
+- **Real numbers on the Paths screen:** fit %, time and cost on each path card are still illustrative. Derive fit from skill-gap coverage, and fill the "Skills traverse" card from the real missing skills.
+- **Survey mapping review:** check that the 7 survey categories in `backend/app/careers/families.py` point to sensible O*NET occupations.
+- **Wider use of the fine-tuned embedder:** it ranks résumé suggestions today (Recall@5 0.82 versus 0.44 for TF-IDF). Use it for role search and posting search too.
+- **Validation:** hand-label about 200 postings to measure title-mapping precision and to check the embedder against independent labels.
+- **Optional LoRA skill extractor:** `notebooks/lora_skill_extractor.ipynb` is ready to run but not wired into the app.
+- **Browser tests:** add a Playwright scenario covering résumé, then quest, then paths, then roadmap.
+- **Licensing:** confirm the Resume Dataset license. Keep posting-derived files under CC BY-SA 4.0.
