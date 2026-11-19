@@ -1,0 +1,4 @@
+O*NET-SOC Code,Title,Element ID,Element Name,Scale ID,Scale Name,Data Value,N,Standard Error,Lower CI Bound,Upper CI Bound,Recommend Suppress,Not Relevant,Date,Domain Source
+15-2051.00,Data Scientists,2.B.3.e,Programming,IM,Importance,4.50,8,0.2,4.1,4.9,N,,08/2026,Analyst
+15-2051.00,Data Scientists,2.B.3.e,Programming,LV,Level,5.50,8,0.3,4.9,6.1,N,N,08/2026,Analyst
+29-1141.00,Registered Nurses,2.B.1.e,Service Orientation,IM,Importance,3.90,8,0.2,3.5,4.3,N,,08/2026,Analyst

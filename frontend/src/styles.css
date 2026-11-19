@@ -20,6 +20,7 @@ button { cursor: pointer; }
 a { color: inherit; }
 .skip-link { position: fixed; left: 1rem; top: -5rem; padding: .8rem 1rem; background: white; z-index: 20; }
 .skip-link:focus { top: 1rem; }
+.skip-link:not(:focus) { clip-path: inset(50%); width: 1px; height: 1px; padding: 0; overflow: hidden; }
 :focus-visible { outline: 3px solid #287a65; outline-offset: 4px; }
 
 .site-shell { min-height: 100vh; overflow: hidden; }
@@ -372,3 +373,4 @@ footer span { font-weight: 800; } footer p { color: #b7c8c2; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+@media(max-width:760px){.topbar{height:auto;min-height:76px;gap:12px;flex-wrap:wrap;padding-block:12px}.topbar nav{gap:10px;flex-wrap:wrap;justify-content:flex-end}.topbar nav .text-button{font-size:.8rem;padding:8px}.topbar .brand{flex-shrink:0}}

@@ -1,8 +1,14 @@
-import { useState } from "react";
-import characterSheet from "./assets/career-character-sheet-original.png";
-import skiingCharacterSheet from "./assets/career-character-skiing-side-profile.png";
-import resortMap from "./assets/careerquest-alpine-resort-map.png";
-import { processResumeLocally } from "./resumeParser";
+import { useEffect, useState } from "react";
+import { Survey, JohnBusiness, emptySurvey } from "./features/survey/Survey";
+import { RetroLandscape, JohnToken } from "./features/roadmap/RetroLandscape";
+import { buildMilestones } from "./features/roadmap/model";
+import { MarketPanel } from "./features/careers/MarketPanel";
+import { useSkillGaps } from "./features/careers/useSkillGaps";
+import { Sources } from "./features/careers/Sources";
+
+
+import { CharacterBuilder, NavigationLock, ProfileSummary } from "./features/character/CharacterBuilder";
+import { CharacterProfile, emptyProfile, toJourneyProfile } from "./features/character/model";
 
 const journey = [
   { number: "01", label: "Build", text: "Turn your experiences, interests, and goals into an editable character." },
@@ -11,7 +17,7 @@ const journey = [
   { number: "04", label: "Act", text: "Leave with specific next-week actions and a longer-term roadmap." },
 ];
 
-type View = "landing" | "onboarding" | "manual" | "resume" | "character" | "quest" | "paths" | "simulation" | "roadmap";
+type View = "sources" | "survey" | "landing" | "onboarding" | "manual" | "resume" | "character" | "quest" | "paths" | "simulation" | "roadmap";
 type Profession = "Military" | "Nurse" | "Firefighter" | "Corporate" | "Pilot";
 type AvatarSelection = { profession: Profession; gender: "masculine" | "feminine" };
 type QuestPlan = { goal: string; role: string; priorities: string[]; horizon: string; budget: string };
@@ -33,345 +39,25 @@ type ResumeResult = {
   message: string;
 };
 
-type EducationRecord = {
-  institution: string;
-  location?: string;
-  degree?: string;
-  date?: string;
-  details: string[];
-};
-
-type ExperienceRecord = {
-  company: string;
-  location?: string;
-  role?: string;
-  date?: string;
-  accomplishments: string[];
-};
-
-const ORGANIZATION_DOMAINS: Record<string, string> = {
-  "university of colorado boulder - leeds school of business": "colorado.edu",
-  "university of colorado boulder": "colorado.edu",
-  "university of colorado colorado springs": "uccs.edu",
-  "mike maroone automotive": "mikemaroonecolorado.com",
-  "amazon": "amazon.com",
-  "colorado national guard": "nationalguard.mil",
-};
-
-export function resolveOrganizationDomain(name: string): string | null {
-  const normalized = name.toLowerCase().replace(/[.,]/g, "").replace(/\s+/g, " ").trim();
-  const match = Object.keys(ORGANIZATION_DOMAINS)
-    .sort((left, right) => right.length - left.length)
-    .find((organization) => normalized === organization || normalized.includes(organization));
-  return match ? ORGANIZATION_DOMAINS[match] : null;
-}
-
-function organizationInitials(name: string) {
-  const meaningful = name.split(/\s+/).filter((word) => !/^(of|the|and|-)$/.test(word.toLowerCase()));
-  return meaningful.slice(0, 2).map((word) => word[0]).join("").toUpperCase() || "ORG";
-}
-
-function OrganizationLogo({ name }: { name: string }) {
-  const [sourceIndex, setSourceIndex] = useState(0);
-  const token = import.meta.env.VITE_LOGO_DEV_TOKEN?.trim();
-  const domain = resolveOrganizationDomain(name);
-  const identifier = domain || `name/${encodeURIComponent(name)}`;
-  const sources = [
-    token ? `https://img.logo.dev/${identifier}?token=${encodeURIComponent(token)}&size=96&format=png` : null,
-    domain ? `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(`https://${domain}`)}&sz=128` : null,
-    domain ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico` : null,
-  ].filter((source): source is string => Boolean(source));
-  const source = sources[sourceIndex];
-
-  if (!source) return <span className="organization-fallback" aria-label={`${name} logo unavailable`}>{organizationInitials(name)}</span>;
-  return <img className="organization-logo" src={source} alt={`${name} logo`} loading="lazy" referrerPolicy="no-referrer" onError={() => setSourceIndex((index) => index + 1)} />;
-}
-
-export function groupEducation(values: string[]): EducationRecord[] {
-  const records: EducationRecord[] = [];
-  const institutionPattern = /\b(university|college|school|institute|academy)\b/i;
-  const locationPattern = /^[A-Za-z .'-]+,\s*[A-Z]{2}$/;
-  const degreePattern = /^(A[ASB]|B[AS]|M[AS]|MBA|MS|MA|MPH|PhD|EdD|JD|MD|DO|Certificate)\b/i;
-  const datePattern = /^(expected\s+)?(?:spring|summer|fall|winter)?\s*(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)?\s*\d{4}$/i;
-
-  for (const value of values) {
-    if (institutionPattern.test(value)) {
-      const locationMatch = value.match(/(?:\s+[-–—|]\s+|\s{2,})([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3},\s*[A-Z]{2})$/);
-      records.push({
-        institution: (locationMatch ? value.slice(0, locationMatch.index).trim() : value).replace(/[.,]+$/, ""),
-        location: locationMatch?.[1],
-        details: [],
-      });
-      continue;
-    }
-    const current = records.at(-1);
-    if (!current) continue;
-    if (!current.location && locationPattern.test(value)) current.location = value;
-    else if (!current.degree && degreePattern.test(value)) current.degree = value;
-    else if (!current.date && datePattern.test(value)) current.date = value.replace(/^Expected\s+/i, "Exp ");
-    else current.details.push(value.replace(/^[*•]\s*/, ""));
-  }
-  return records;
-}
-
-function EducationReview({ values }: { values: string[] }) {
-  const records = groupEducation(values);
-  if (!records.length) return <p>Nothing confidently identified—add this manually during review.</p>;
+function Brand({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
-    <div className="education-records">
-      {records.map((record) => (
-        <article key={`${record.institution}-${record.degree ?? "education"}`}>
-          <p className="school-line"><strong>{record.institution}.</strong>{record.location && <> {record.location}</>}</p>
-          {(record.degree || record.date) && <p className="degree-line">- {record.degree}{record.date && ` - ${record.date}`}</p>}
-          {record.details.map((detail) => <p className="education-detail" key={detail}>* {detail}</p>)}
-        </article>
-      ))}
-    </div>
-  );
-}
-
-export function groupExperience(values: string[]): ExperienceRecord[] {
-  const records: ExperienceRecord[] = [];
-  const locationPattern = /^[A-Za-z .'-]+,\s*[A-Z]{2}$/;
-  const datePattern = /(?:19|20)\d{2}|present/i;
-  let index = 0;
-  while (index < values.length) {
-    const rawValue = values[index].replace(/^\uf0b7\s*/, "• ").trim();
-    const combinedLocation = rawValue.match(/^(.*?)(?:\s+[-–—|]\s+|\s{2,})([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3},\s*[A-Z]{2})$/);
-    const nextValue = values[index + 1]?.trim() ?? "";
-    const knownOrganization = resolveOrganizationDomain(rawValue) !== null;
-    const companyLike = !rawValue.startsWith("•") && !datePattern.test(rawValue) && (
-      knownOrganization ||
-      Boolean(combinedLocation) ||
-      /\b(?:automotive|amazon|guard|company|group|corp(?:oration)?|inc|llc|hospital|health|university|college|school|agency|department)\b/i.test(rawValue)
-    );
-    if (companyLike) {
-      records.push({
-        company: (combinedLocation?.[1] ?? rawValue).replace(/[.,]+$/, "").trim(),
-        location: combinedLocation?.[2],
-        accomplishments: [],
-      });
-      index += 1;
-      if (!combinedLocation && locationPattern.test(nextValue)) {
-        records[records.length - 1].location = nextValue;
-        index += 1;
-      }
-      continue;
-    }
-    const current = records.at(-1);
-    if (!current) { index += 1; continue; }
-    const value = rawValue;
-    if (!current.role && !value.startsWith("•")) {
-      const dateStart = value.search(/\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|(?:19|20)\d{2}|Present)\b/i);
-      if (dateStart > 0) {
-        current.role = value.slice(0, dateStart).replace(/[|·\s-]+$/, "").trim();
-        current.date = value.slice(dateStart).trim();
-      } else current.role = value;
-    }
-    else if (!current.date && !value.startsWith("•") && datePattern.test(value)) current.date = value;
-    else if (value.startsWith("•")) current.accomplishments.push(value.replace(/^•\s*/, ""));
-    else if (current.accomplishments.length) current.accomplishments[current.accomplishments.length - 1] += ` ${value}`;
-    else current.accomplishments.push(value);
-    index += 1;
-  }
-  return records;
-}
-
-function ExperienceReview({ values }: { values: string[] }) {
-  const records = groupExperience(values);
-  const [showAllEmployers, setShowAllEmployers] = useState(false);
-  if (!records.length) return <p>Nothing confidently identified—add this manually during review.</p>;
-  const visibleRecords = showAllEmployers ? records : records.slice(0, 1);
-  const hiddenEmployers = records.length - visibleRecords.length;
-  return (
-    <div className="experience-records">
-      {visibleRecords.map((record) => <ExperienceCard key={`${record.company}-${record.role ?? "experience"}`} record={record} />)}
-      {records.length > 1 && (
-        <button className="employer-toggle" type="button" onClick={() => setShowAllEmployers(!showAllEmployers)} aria-expanded={showAllEmployers}>
-          {showAllEmployers ? "Hide additional experience" : `View more experience (${hiddenEmployers} roles)`}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function ExperienceCard({ record }: { record: ExperienceRecord }) {
-  const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? record.accomplishments : record.accomplishments.slice(0, 2);
-  const hiddenCount = record.accomplishments.length - visible.length;
-  return (
-    <article>
-      <p className="company-line"><strong>{record.company}</strong>{record.location && <> - {record.location}</>}</p>
-      {record.role && <p className="role-line">{record.role}{record.date && <span> · {record.date}</span>}</p>}
-      <ul>{visible.map((item) => <li key={item}>{item}</li>)}</ul>
-      {record.accomplishments.length > 2 && (
-        <button className="panel-toggle" type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>
-          {expanded ? "Show less" : `Show ${hiddenCount} more`}
-        </button>
-      )}
-    </article>
-  );
-}
-
-function Brand({ onClick }: { onClick: () => void }) {
-  return (
-    <button className="brand brand-button" type="button" onClick={onClick} aria-label="CareerQuest home">
+    <button className="brand brand-button" type="button" disabled={disabled} onClick={onClick} aria-label="CareerQuest home">
       <span className="brand-mark" aria-hidden="true">CQ</span>
       <span>CareerQuest</span>
     </button>
   );
 }
 
-function ResumeUpload({ onBack, onManual, onComplete }: { onBack: () => void; onManual: () => void; onComplete: (result: ResumeResult) => void }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [consent, setConsent] = useState(false);
-  const [status, setStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<ResumeResult | null>(null);
-
-  const upload = async () => {
-    if (!file || !consent) return;
-    setStatus("uploading");
-    setError("");
-    try {
-      const payload = await processResumeLocally(file);
-      setResult(payload as ResumeResult);
-      setStatus("done");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "The résumé could not be processed.");
-      setStatus("error");
-    }
-  };
-
-  if (result) {
-    const { name: _name, ...profileSections } = result.draft;
-    const sections = Object.entries(profileSections) as [Exclude<keyof ResumeDraft, "name">, string[]][];
-    return (
-      <main id="main" className="builder-page">
-        <button className="back-button" type="button" onClick={() => setResult(null)}>← Upload another résumé</button>
-        <section className="review-panel">
-          <p className="kicker">Review your character</p>
-          <h1 className="builder-title">We found a starting point.</h1>
-          <p className="success-message" role="status">✓ {result.message}</p>
-          <div className="review-meta"><strong>{result.filename}</strong><span>{result.character_count.toLocaleString()} readable characters</span></div>
-          <div className="review-sections">
-            {sections.map(([name, values]) => (
-              <section key={name}>
-                <h2>{name === "skills" ? "Top 10 skills" : name.replace("_", " ")}</h2>
-                {name === "education" ? <EducationReview values={values} /> : name === "experience" ? <ExperienceReview values={values} /> : values.length ? <ul className={name === "skills" ? "skills-grid" : undefined}>{values.map((value) => <li key={value}>{value}</li>)}</ul> : <p>Nothing confidently identified—add this manually during review.</p>}
-              </section>
-            ))}
-          </div>
-          <div className="review-warning"><strong>Draft only</strong><span>Review and edit these extracted facts before approving your character.</span></div>
-          <button className="primary-button" type="button" onClick={() => onComplete(result)}>Complete my character →</button>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main id="main" className="builder-page">
-      <button className="back-button" type="button" onClick={onBack}>← Back to options</button>
-      <section className="upload-panel">
-        <p className="kicker">Build from résumé</p>
-        <h1 className="builder-title">Bring what you've already done.</h1>
-        <p>Upload a résumé to create a draft profile. You will review everything before it becomes part of your character.</p>
-        <div className="privacy-callout"><strong>Private browser processing</strong><span>PDF, DOCX, or UTF-8 TXT · Maximum 5 MB · Your résumé stays on this device and is not uploaded to a server.</span></div>
-        <label className="file-drop" htmlFor="resume-file">
-          <span aria-hidden="true">↥</span>
-          <strong>{file ? file.name : "Choose your résumé"}</strong>
-          <small>{file ? `${(file.size / 1024).toFixed(1)} KB selected` : "PDF, DOCX, or TXT up to 5 MB"}</small>
-        </label>
-        <input className="visually-hidden" id="resume-file" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setStatus("idle"); setError(""); }} />
-        <label className="consent-row">
-          <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
-          <span>I understand the document will be processed locally into an editable draft.</span>
-        </label>
-        {error && <p className="upload-error" role="alert">{error}</p>}
-        <button className="primary-button upload-button" type="button" disabled={!file || !consent || status === "uploading"} onClick={upload}>{status === "uploading" ? "Processing securely…" : "Process my résumé →"}</button>
-        <button className="text-button" type="button" onClick={onManual}>Build manually instead</button>
-      </section>
-    </main>
-  );
-}
-
-function CharacterComplete({ result, initialAvatar, onEdit, onUseCharacter }: { result: ResumeResult; initialAvatar: AvatarSelection; onEdit: () => void; onUseCharacter: (avatar: AvatarSelection) => void }) {
+function CharacterComplete({ result, profile, initialAvatar, onEdit, onUseCharacter }: { result: ResumeResult; profile: CharacterProfile; initialAvatar: AvatarSelection; onEdit: () => void; onUseCharacter: (avatar: AvatarSelection) => void }) {
   const name = result.draft.name || "Your character";
-  const professions: Profession[] = ["Military", "Nurse", "Firefighter", "Corporate", "Pilot"];
-  const [profession, setProfession] = useState<Profession>(initialAvatar.profession);
-  const [gender, setGender] = useState<"masculine" | "feminine">(initialAvatar.gender);
-  const education = groupEducation(result.draft.education).slice(0, 2);
-  const experience = groupExperience(result.draft.experience).slice(0, 3);
-  const spriteStyle = (item: (typeof professions)[number]) => {
-    const column = professions.indexOf(item);
-    return {
-      backgroundImage: `url(${characterSheet})`,
-      backgroundPosition: `${column * 25}% ${gender === "masculine" ? 0 : 100}%`,
-    };
-  };
-
-  return (
-    <main id="main" className="character-select-page">
-      <div className="character-select-heading">
-        <div><p className="kicker">Complete your character</p><h1>Choose your pathfinder.</h1></div>
-        <div className="gender-select" role="group" aria-label="Character gender presentation">
-          <button type="button" className={gender === "masculine" ? "active" : ""} onClick={() => setGender("masculine")}>Masculine</button>
-          <button type="button" className={gender === "feminine" ? "active" : ""} onClick={() => setGender("feminine")}>Feminine</button>
-        </div>
-      </div>
-
-      <section className="character-selector-shell">
-        <aside className="profession-roster" aria-label="Choose a profession">
-          <h2>Profession</h2>
-          <div className="profession-grid">
-            {professions.map((item) => (
-              <button key={item} type="button" aria-pressed={profession === item} className={profession === item ? "selected" : ""} onClick={() => setProfession(item)}>
-                <span className="profession-sprite" style={spriteStyle(item)} aria-hidden="true" />
-                <strong>{item}</strong>
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        <section className="active-character" aria-live="polite">
-          <div className="character-stage"><span className="active-sprite" style={spriteStyle(profession)} aria-hidden="true" /></div>
-          <p className="character-name">{name}</p>
-          <h2>{profession} Pathfinder</h2>
-          <p>Choose the look that represents you. It won’t limit the careers you can explore.</p>
-          <button className="primary-button" type="button" onClick={() => onUseCharacter({ profession, gender })}>Use this character →</button>
-        </section>
-
-        <aside className="resume-highlights">
-          <p className="panel-eyebrow">Character profile</p>
-          <h2>{name}</h2>
-          <section>
-            <h3>Education</h3>
-            {education.length ? education.map((record) => (
-              <div className="highlight-row" key={`${record.institution}-${record.degree}`}>
-                <OrganizationLogo name={record.institution} />
-                <div><strong>{record.degree || record.institution}</strong>{record.degree && <small>{record.institution}</small>}</div>
-              </div>
-            )) : <p>{name} · {result.draft.education[0] || "Education added during character setup"}</p>}
-          </section>
-          <section>
-            <h3>Experience</h3>
-            {experience.length ? experience.map((record) => (
-              <div className="highlight-row" key={`${record.company}-${record.role}`}>
-                <OrganizationLogo name={record.company} />
-                <div><strong>{record.role || record.company}</strong>{record.role && <small>{record.company}</small>}</div>
-              </div>
-            )) : <p>{name} · Add experience as your journey grows</p>}
-          </section>
-          <div className="highlight-skills">{result.draft.skills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>)}</div>
-        </aside>
-      </section>
-
-      <div className="character-select-footer">
-        <button className="text-button" type="button" onClick={onEdit}>← Review résumé details</button>
-        <span>Profession artwork is cosmetic—your options stay open.</span>
-      </div>
-    </main>
-  );
+  return <main id="main" className="character-select-page">
+    <div className="character-select-heading"><div><p className="kicker">Player 01 · Ready to explore</p><h1>Choose your pathfinder.</h1></div></div>
+    <section className="character-selector-shell john-selector">
+      <section className="active-character"><div className="john-stage"><RetroLandscape /><JohnToken large /></div><p className="character-name">{name}</p><h2>John Business</h2><p>Your character for every career adventure. Your interests and experience shape the path—not the suit.</p><button className="primary-button" onClick={() => onUseCharacter(initialAvatar)}>Use this character →</button></section>
+      <ProfileSummary profile={profile} />
+    </section>
+    <div className="character-select-footer"><button className="text-button" onClick={onEdit}>← Edit my character</button><span>One familiar face. Every career remains open.</span></div>
+  </main>;
 }
 
 const questOptions = [
@@ -385,7 +71,17 @@ const questOptions = [
   { id: "flexibility", label: "More flexibility", icon: "⌂" },
 ] as const;
 
-function suggestedRoles(result: ResumeResult, profession: Profession) {
+const surveyRoles: Record<string, string[]> = {
+  Healthcare: ["Registered Nurse", "Medical Laboratory Technician", "Community Health Worker"],
+  Business: ["Business Analyst", "Project Coordinator", "Accountant"],
+  Education: ["Teacher", "Instructional Designer", "School Counselor"],
+  Military: ["Military Logistics Specialist", "Military Communications Specialist", "Military Medic"],
+  Law: ["Paralegal", "Lawyer", "Legal Research Assistant"],
+  Trades: ["Electrician", "Welder", "HVAC Technician"],
+  Political: ["Policy Analyst", "Legislative Aide", "Community Organizer"],
+};
+function suggestedRoles(result: ResumeResult, profession: Profession, selectedCareer?: string | null) {
+  if (selectedCareer && surveyRoles[selectedCareer]) return surveyRoles[selectedCareer];
   const profile = [...result.draft.education, ...result.draft.skills, ...result.draft.experience].join(" ").toLowerCase();
   if (/analytics|data|python|sql|machine learning/.test(profile)) return ["Healthcare Data Analyst", "BI Analyst", "Operations Analytics Manager"];
   const byProfession: Record<Profession, string[]> = {
@@ -398,8 +94,8 @@ function suggestedRoles(result: ResumeResult, profession: Profession) {
   return byProfession[profession];
 }
 
-function QuestScreen({ result, avatar, onBack, onGenerate }: { result: ResumeResult; avatar: AvatarSelection; onBack: () => void; onGenerate: (plan: QuestPlan) => void }) {
-  const roles = suggestedRoles(result, avatar.profession);
+function QuestScreen({ result, avatar, onBack, onGenerate, selectedCareer }: { selectedCareer?: string | null; result: ResumeResult; avatar: AvatarSelection; onBack: () => void; onGenerate: (plan: QuestPlan) => void }) {
+  const roles = suggestedRoles(result, avatar.profession, selectedCareer);
   const [quest, setQuest] = useState<(typeof questOptions)[number]["id"]>("career");
   const [role, setRole] = useState(roles[0]);
   const [customRole, setCustomRole] = useState("");
@@ -409,11 +105,6 @@ function QuestScreen({ result, avatar, onBack, onGenerate }: { result: ResumeRes
   const prioritiesList = ["Stability", "Flexibility", "Creativity", "Advancement", "Income", "Social impact", "Work-life fit", "Learning"];
   const selectedQuest = questOptions.find((item) => item.id === quest)!;
   const targetRole = customRole.trim() || role;
-  const avatarColumn = (["Military", "Nurse", "Firefighter", "Corporate", "Pilot"] as Profession[]).indexOf(avatar.profession);
-  const avatarStyle = {
-    backgroundImage: `url(${skiingCharacterSheet})`,
-    backgroundPosition: `${avatarColumn * 25}% ${avatar.gender === "masculine" ? 0 : 100}%`,
-  };
   const goalRoutes = [
     { id: "career", d: "M450 615 Q440 470 462 220" },
     { id: "promotion", d: "M450 615 Q620 450 795 125" },
@@ -440,9 +131,9 @@ function QuestScreen({ result, avatar, onBack, onGenerate }: { result: ResumeRes
 
       <div className="quest-workspace">
         <section className="quest-map" aria-labelledby="quest-map-title">
-          <img className="resort-map-art" src={resortMap} alt="" aria-hidden="true" />
+          <RetroLandscape />
           <div className="resort-map-shade" aria-hidden="true" />
-          <div className="resort-map-header"><span id="quest-map-title">CareerQuest Alpine</span><small>8 summits · Choose your ascent</small></div>
+          <div className="resort-map-header"><span id="quest-map-title">CareerQuest World 01</span><small>8 destinations · Choose your mission</small></div>
           <svg className="goal-route-lines" viewBox="0 0 900 650" preserveAspectRatio="none" aria-hidden="true">
             {goalRoutes.map((route) => <path key={route.id} className={quest === route.id ? "active" : ""} d={route.d} />)}
           </svg>
@@ -453,11 +144,11 @@ function QuestScreen({ result, avatar, onBack, onGenerate }: { result: ResumeRes
               </button>
             ))}
           </div>
-          <div className="quest-avatar-stage" aria-label={`${result.draft.name || "Your"} ${avatar.profession} character`}>
-            <span className="quest-avatar-sprite" style={avatarStyle} aria-hidden="true" />
-            <span className="avatar-marker"><strong>{result.draft.name || "You"}</strong><small>{avatar.profession} Pathfinder</small></span>
+          <div className="quest-avatar-stage" aria-label="John Business, your character">
+            <JohnToken />
+            <span className="avatar-marker"><strong>{result.draft.name || "You"}</strong><small>John Business</small></span>
           </div>
-          <div className="basecamp-label"><strong>BASECAMP</strong><span>All lifts begin here</span></div>
+          <div className="basecamp-label"><strong>START HERE</strong><span>Your next move starts here</span></div>
         </section>
 
         <aside className="quest-controls">
@@ -483,6 +174,7 @@ function QuestScreen({ result, avatar, onBack, onGenerate }: { result: ResumeRes
 
 function PathsScreen({ result, plan, onBack, onContinue }: { result: ResumeResult; plan: QuestPlan; onBack: () => void; onContinue: (path: PathChoice) => void }) {
   const [selected, setSelected] = useState("direct");
+  const [marketSalary, setMarketSalary] = useState<string | null>(null);
   const knownSkills = result.draft.skills.slice(0, 3);
   const pathOptions = [
     { id: "direct", number: "01", label: "Direct ascent", tag: "Fastest", time: plan.horizon === "6 mo" ? "3–6 months" : "6–12 months", cost: plan.budget, fit: 88, salary: "$72K–$98K", description: `Position your current experience directly for ${plan.role} opportunities.`, skills: knownSkills.length ? knownSkills : ["Communication", "Analysis", "Project work"], actions: ["Rewrite résumé around measurable outcomes", `Build a targeted ${plan.role} portfolio case`, "Apply to 5 aligned roles each week"] },
@@ -492,10 +184,11 @@ function PathsScreen({ result, plan, onBack, onContinue }: { result: ResumeResul
 
   return <main id="main" className="paths-page">
     <div className="paths-heading-row"><div><p className="kicker">Step 3 · Paths</p><h1>Three ways up.</h1><p>Built for {result.draft.name || "you"} around <strong>{plan.role}</strong>, {plan.priorities.join(" and ").toLowerCase() || "your priorities"}.</p></div><ol className="quest-progress"><li className="complete">✓ Character</li><li className="complete">✓ Quest</li><li className="active">Paths</li><li>Simulation</li><li>Roadmap</li></ol></div>
+    <MarketPanel role={plan.role} skills={result.draft.skills} goal={plan.goal} onSalaryRange={setMarketSalary} />
     <section className="path-cards" aria-label="Generated career paths">
       {pathOptions.map((path) => <button key={path.id} type="button" className={`path-option ${selected === path.id ? "selected" : ""}`} onClick={() => setSelected(path.id)}>
         <div className="path-card-top"><span>{path.number}</span><i>{path.tag}</i></div><h2>{path.label}</h2><p>{path.description}</p>
-        <div className="path-metrics"><span><small>Time</small><strong>{path.time}</strong></span><span><small>Cost</small><strong>{path.cost}</strong></span><span><small>Fit</small><strong>{path.fit}%</strong></span><span><small>Outlook</small><strong>{path.salary}</strong></span></div>
+        <div className="path-metrics"><span><small>Time</small><strong>{path.time}</strong></span><span><small>Cost</small><strong>{path.cost}</strong></span><span><small>Fit</small><strong>{path.fit}%</strong></span><span><small>{marketSalary ? "Pay (postings)" : "Outlook (illustrative)"}</small><strong>{marketSalary ?? path.salary}</strong></span></div>
         <div className="path-detail"><h3>Skills to strengthen</h3><div>{path.skills.map((skill) => <span key={skill}>{skill}</span>)}</div><h3>First moves</h3><ol>{path.actions.map((action) => <li key={action}>{action}</li>)}</ol></div>
         <span className="select-path">{selected === path.id ? "✓ Selected" : "Choose this path"}</span>
       </button>)}
@@ -557,82 +250,24 @@ function SimulationScreen({ result, plan, path, onBack, onRoadmap }: { result: R
   </main>;
 }
 
-function RoadmapScreen({ result, plan, path, onBack }: { result: ResumeResult; plan: QuestPlan; path: PathChoice; onBack: () => void }) {
-  const [done, setDone] = useState<string[]>([]);
-  const milestones = [
-    { phase: "Next 7 days", title: "Set your basecamp", items: [`Rewrite your headline toward ${plan.role}`, "Save five representative job descriptions", "Choose one person to ask for perspective"] },
-    { phase: "Days 8–30", title: "Build visible proof", items: [`Create one ${plan.role} portfolio case`, `Strengthen ${result.draft.skills[0] || "one core technical skill"}`, "Schedule two informational conversations"] },
-    { phase: "Days 31–60", title: "Test the market", items: ["Tailor your résumé to the target role", "Practice three achievement stories", "Apply to five high-fit opportunities each week"] },
-    { phase: "Days 61–90", title: "Choose with evidence", items: ["Review interview and application signals", "Compare offers against your top priorities", "Adjust the route without abandoning the goal"] },
-  ];
+function RoadmapScreen({ result, plan, path, profile, done, setDone, onBack }: { result: ResumeResult; plan: QuestPlan; path: PathChoice; profile: CharacterProfile; done: string[]; setDone: (done: string[]) => void; onBack: () => void }) {
+  const gaps = useSkillGaps(plan.role, result.draft.skills);
+  const milestones = buildMilestones(plan, path.id, profile, gaps);
   const total = milestones.reduce((sum, phase) => sum + phase.items.length, 0);
-  const toggle = (item: string) => setDone((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item]);
-  return <main id="main" className="roadmap-page">
-    <div className="roadmap-heading"><div><p className="kicker">Step 5 · Roadmap</p><h1>Your next 90 days.</h1><p>{result.draft.name || "Your"} · {path.label} toward <strong>{plan.role}</strong></p></div><ol className="quest-progress"><li className="complete">✓ Character</li><li className="complete">✓ Quest</li><li className="complete">✓ Paths</li><li className="complete">✓ Simulation</li><li className="active">Roadmap</li></ol></div>
-    <section className="roadmap-summary"><div><span>Goal</span><strong>{plan.role}</strong></div><div><span>Route</span><strong>{path.label}</strong></div><div><span>Horizon</span><strong>{plan.horizon}</strong></div><div><span>Progress</span><strong>{done.length} of {total}</strong></div></section>
-    <section className="roadmap-timeline">{milestones.map((milestone, phaseIndex) => <article key={milestone.phase}><div className="timeline-marker">{phaseIndex + 1}</div><p>{milestone.phase}</p><h2>{milestone.title}</h2><div>{milestone.items.map((item) => <label key={item} className={done.includes(item) ? "complete" : ""}><input type="checkbox" checked={done.includes(item)} onChange={() => toggle(item)} /><span>{item}</span></label>)}</div></article>)}</section>
-    <div className="quest-footer"><button className="text-button" type="button" onClick={onBack}>← Back to simulation</button><button className="primary-button" type="button" onClick={() => window.print()}>Print my roadmap</button></div>
+  const toggle = (id: string) => setDone(done.includes(id) ? done.filter(value => value !== id) : [...done, id]);
+  const cleared = milestones.map((phase, index) => phase.items.every((_, task) => done.includes(`${index}-${task}`)));
+  return <main id="main" className="roadmap-page retro-roadmap">
+    <div className="roadmap-heading"><div><p className="kicker">World 01 · Your action plan</p><h1>Your next 90 days.</h1><p>{result.draft.name || "Your"} · {path.label} toward <strong>{plan.role}</strong></p></div><div className="roadmap-counter" role="status">★ {done.length} / {total} actions complete</div></div>
+    <section className="roadmap-world" aria-label="Four roadmap checkpoints"><RetroLandscape /><div className="world-hud"><span>CAREERQUEST / WORLD 01</span><span>PLAYER · JOHN BUSINESS</span></div><div className="world-checkpoints">{milestones.map((phase,index)=><a href={`#milestone-${index}`} key={phase.phase} className={cleared[index] ? "cleared" : ""}><b>{cleared[index] ? "★" : `0${index+1}`}</b><strong>{["Research", "Practice", "Experience", "Decide"][index]}</strong><span>{phase.phase}</span></a>)}</div><div className="world-player"><JohnToken /><span>YOUR NEXT MOVE</span></div></section>
+    <section className="roadmap-brief"><div><p className="kicker">The mission</p><h2>Build evidence. Make a decision.</h2><p>Each checkpoint has a concrete deliverable. Mark an action complete when you have the evidence described below. These 90 days are for preparation and exploration; qualifying for {plan.role} may take longer.</p></div><div><strong>Planning constraints</strong><p>Budget: {plan.budget}<br/>Longer-term horizon: {plan.horizon}<br/>Priorities: {plan.priorities.join(" · ") || "Still exploring"}</p><small>Progress stays while navigating this page’s session. Print a copy before refreshing.</small></div></section>
+    <section className="roadmap-timeline">{milestones.map((phase,index)=><article id={`milestone-${index}`} key={phase.phase} tabIndex={-1}><div className="checkpoint-title"><span className="timeline-marker">{cleared[index] ? "★" : index+1}</span><p>{phase.phase}</p><span className="checkpoint-state">{cleared[index] ? "Complete" : "In progress"}</span></div><h2>{phase.title}</h2><p className="checkpoint-reward">Deliverable: {phase.reward}</p><div>{phase.items.map((item,task)=>{const id=`${index}-${task}`;return <label key={id} className={done.includes(id) ? "complete" : ""}><input type="checkbox" checked={done.includes(id)} onChange={()=>toggle(id)}/><span><strong>{item.title}</strong><small>{item.proof}</small></span></label>;})}</div></article>)}</section>
+    <div className="quest-footer"><button className="text-button" onClick={onBack}>← Back to simulation</button><button className="primary-button" onClick={()=>window.print()}>Print my roadmap</button></div>
   </main>;
 }
 
-function ManualCharacterBuilder({ onBack, onComplete }: { onBack: () => void; onComplete: (result: ResumeResult) => void }) {
-  const [name, setName] = useState("");
-  const [stage, setStage] = useState("");
-  const stages = ["High school", "College", "Graduate or professional school", "Workforce"];
-  const ready = name.trim().length > 0 && stage.length > 0;
-
-  const continueToCharacter = () => {
-    if (!ready) return;
-    onComplete({
-      filename: "Manual profile",
-      character_count: 0,
-      message: "Your manually entered profile is ready.",
-      draft: {
-        name: name.trim(),
-        education: [stage],
-        experience: [],
-        skills: [],
-        certifications: [],
-        projects: [],
-      },
-    });
-  };
-
-  return (
-    <main id="main" className="builder-page">
-      <button className="back-button" type="button" onClick={onBack}>← Back to options</button>
-      <div className="builder-layout">
-        <aside>
-          <p className="kicker">Character builder</p>
-          <h1 className="builder-title">Tell us where you're starting.</h1>
-          <p>This first step creates a draft. You’ll review and edit everything before it is used.</p>
-        </aside>
-        <form className="starter-form" onSubmit={(event) => { event.preventDefault(); continueToCharacter(); }}>
-          <div className="form-progress"><span>Step 1 of 4</span><progress value="1" max="4">25%</progress></div>
-          <label htmlFor="character-name">What should we call your character?</label>
-          <input id="character-name" name="character-name" autoComplete="nickname" placeholder="Enter a name" value={name} onChange={(event) => setName(event.target.value)} />
-          <fieldset>
-            <legend>Where are you right now?</legend>
-            <div className="option-grid">
-              {stages.map((option) => (
-                <label className="radio-card" key={option}>
-                  <input type="radio" name="life-stage" value={option} checked={stage === option} onChange={() => setStage(option)} />
-                  <span>{option}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <button className="primary-button form-next" type="submit" disabled={!ready}>Continue →</button>
-          {!ready && <p className="form-note">Complete the name and life-stage fields to continue.</p>}
-        </form>
-      </div>
-    </main>
-  );
-}
-
-function Onboarding({ view, onBack, onSelect, resumeResult, avatar, questPlan, pathChoice, onAvatarSelect, onGeneratePaths, onChoosePath, onResumeComplete }: { view: View; onBack: () => void; onSelect: (view: View) => void; resumeResult: ResumeResult | null; avatar: AvatarSelection; questPlan: QuestPlan | null; pathChoice: PathChoice | null; onAvatarSelect: (avatar: AvatarSelection) => void; onGeneratePaths: (plan: QuestPlan) => void; onChoosePath: (path: PathChoice) => void; onResumeComplete: (result: ResumeResult) => void }) {
+function Onboarding({ roadmapDone, setRoadmapDone, selectedCareer, view, onBack, onSelect, resumeResult, avatar, questPlan, pathChoice, onAvatarSelect, onGeneratePaths, onChoosePath, profile, builderStep, onProfileChange, onBuilderStep, onApprove, onReset }: { roadmapDone: string[]; setRoadmapDone: (done: string[]) => void; selectedCareer: string | null; view: View; onBack: () => void; onSelect: (view: View) => void; resumeResult: ResumeResult | null; avatar: AvatarSelection; questPlan: QuestPlan | null; pathChoice: PathChoice | null; onAvatarSelect: (avatar: AvatarSelection) => void; onGeneratePaths: (plan: QuestPlan) => void; onChoosePath: (path: PathChoice) => void; profile: CharacterProfile; builderStep: number; onProfileChange: (profile: CharacterProfile) => void; onBuilderStep: (step: number) => void; onApprove: (profile: CharacterProfile) => void; onReset: () => void }) {
   if (view === "roadmap" && resumeResult && questPlan && pathChoice) {
-    return <RoadmapScreen result={resumeResult} plan={questPlan} path={pathChoice} onBack={() => onSelect("simulation")} />;
+    return <RoadmapScreen profile={profile} done={roadmapDone} setDone={setRoadmapDone} result={resumeResult} plan={questPlan} path={pathChoice} onBack={() => onSelect("simulation")} />;
   }
   if (view === "simulation" && resumeResult && questPlan && pathChoice) {
     return <SimulationScreen result={resumeResult} plan={questPlan} path={pathChoice} onBack={() => onSelect("paths")} onRoadmap={() => onSelect("roadmap")} />;
@@ -641,17 +276,13 @@ function Onboarding({ view, onBack, onSelect, resumeResult, avatar, questPlan, p
     return <PathsScreen result={resumeResult} plan={questPlan} onBack={() => onSelect("quest")} onContinue={onChoosePath} />;
   }
   if (view === "quest" && resumeResult) {
-    return <QuestScreen result={resumeResult} avatar={avatar} onBack={() => onSelect("character")} onGenerate={onGeneratePaths} />;
+    return <QuestScreen selectedCareer={selectedCareer} result={resumeResult} avatar={avatar} onBack={() => onSelect("character")} onGenerate={onGeneratePaths} />;
   }
   if (view === "character" && resumeResult) {
-    return <CharacterComplete result={resumeResult} initialAvatar={avatar} onEdit={() => onSelect("resume")} onUseCharacter={onAvatarSelect} />;
+    return <CharacterComplete result={resumeResult} profile={profile} initialAvatar={avatar} onEdit={() => { onBuilderStep(3); onSelect("manual"); }} onUseCharacter={onAvatarSelect} />;
   }
-  if (view === "manual") {
-    return <ManualCharacterBuilder onBack={() => onSelect("onboarding")} onComplete={onResumeComplete} />;
-  }
-
-  if (view === "resume") {
-    return <ResumeUpload onBack={() => onSelect("onboarding")} onManual={() => onSelect("manual")} onComplete={onResumeComplete} />;
+  if (view === "manual" || view === "resume") {
+    return <CharacterBuilder profile={profile} step={builderStep} resumeFirst={view === "resume"} onChange={onProfileChange} onStep={onBuilderStep} onBack={() => onSelect("onboarding")} onApprove={onApprove} onReset={onReset} />;
   }
 
   return (
@@ -670,7 +301,7 @@ function Onboarding({ view, onBack, onSelect, resumeResult, avatar, questPlan, p
           <span>Answer a few guided questions about your experience, interests, priorities, and goals.</span>
           <i>About 5 minutes →</i>
         </button>
-        <button className="method-card resume-card" type="button" onClick={() => onSelect("resume")}>
+        <button className="method-card resume-card" type="button" onClick={() => { onBuilderStep(0); onSelect("resume"); }}>
           <span className="method-icon" aria-hidden="true">↥</span>
           <span className="method-label">Faster start</span>
           <strong>Build from my résumé</strong>
@@ -678,20 +309,37 @@ function Onboarding({ view, onBack, onSelect, resumeResult, avatar, questPlan, p
           <i>PDF, DOCX, or TXT →</i>
         </button>
       </div>
-      <p className="onboarding-note">High-school students can add ACT or SAT scores during manual setup.</p>
+      <p className="onboarding-note">No résumé needed. Classes, hobbies, projects, and helping others all belong in your story.</p>
     </main>
   );
 }
 
 export function App() {
+  const [navigationLocked, setNavigationLocked] = useState(false);
   const [view, setView] = useState<View>("landing");
-  const [resumeResult, setResumeResult] = useState<ResumeResult | null>(null);
+  const [survey, setSurvey] = useState(emptySurvey);
+  const [surveyReturn, setSurveyReturn] = useState<View>("landing");
+  const [selectedCareer, setSelectedCareer] = useState<string | null>(null);
+  const openSurvey = () => { if (view !== "survey") setSurveyReturn(view); setView("survey"); window.scrollTo(0, 0); };
+  const [profile, setProfile] = useState<CharacterProfile>(emptyProfile);
+  const [builderStep, setBuilderStep] = useState(0);
+  const resumeResult = profile.approval_status === "approved" ? toJourneyProfile(profile) : null;
+  useEffect(() => {
+    const hasDraft = Boolean(profile.name || profile.life_stage || profile.goal || profile.entries.length);
+    if (!hasDraft && !Object.keys(survey.answers).length) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [profile, survey.answers]);
   const [avatar, setAvatar] = useState<AvatarSelection>({ profession: "Corporate", gender: "masculine" });
   const [questPlan, setQuestPlan] = useState<QuestPlan | null>(null);
+  const [roadmapDone, setRoadmapDone] = useState<string[]>([]);
   const [pathChoice, setPathChoice] = useState<PathChoice | null>(null);
 
-  const completeResumeCharacter = (result: ResumeResult) => {
-    setResumeResult(result);
+  const completeResumeCharacter = (confirmed: CharacterProfile) => {
+    setProfile(confirmed);
+    setQuestPlan(null);
+    setPathChoice(null);
     setView("character");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -714,11 +362,13 @@ export function App() {
 
   const generatePaths = (plan: QuestPlan) => {
     setQuestPlan(plan);
+    setRoadmapDone([]);
     setView("paths");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const choosePath = (path: PathChoice) => {
+    if (pathChoice?.id !== path.id) setRoadmapDone([]);
     setPathChoice(path);
     setView("simulation");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -727,17 +377,19 @@ export function App() {
   const scrollToHow = () => document.querySelector("#how")?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <div className="site-shell">
+    <NavigationLock.Provider value={setNavigationLocked}><div className="site-shell">
       <header className="topbar">
-        <Brand onClick={showLanding} />
+        <Brand onClick={showLanding} disabled={navigationLocked} />
         <nav aria-label="Primary navigation">
           {view === "landing" && <a href="#how">How it works</a>}
           {view === "landing" && <a href="#trust">Privacy</a>}
-          <button className="nav-cta" type="button" onClick={showOnboarding}>Start your quest</button>
+          <button className="text-button" type="button" disabled={navigationLocked} onClick={openSurvey}>Career survey</button>
+          <button className="nav-cta" type="button" disabled={navigationLocked} onClick={showOnboarding}>Start your quest</button>
         </nav>
       </header>
 
-      {view !== "landing" ? <Onboarding view={view} onBack={showLanding} onSelect={setView} resumeResult={resumeResult} avatar={avatar} questPlan={questPlan} pathChoice={pathChoice} onAvatarSelect={useCharacter} onGeneratePaths={generatePaths} onChoosePath={choosePath} onResumeComplete={completeResumeCharacter} /> : <main id="main">
+      {selectedCareer && view !== "survey" && <aside className="survey-selection"><strong>Exploring {selectedCareer}.</strong> Your quest will suggest roles in this field. You can still choose any direction. <button className="text-button" onClick={openSurvey} disabled={navigationLocked}>Review survey</button></aside>}
+      {view === "sources" ? <Sources onBack={showLanding} /> : view === "survey" ? <Survey state={survey} onChange={setSurvey} onExit={() => setView(surveyReturn)} onChoose={career => { setSelectedCareer(career); setView(profile.approval_status === "approved" ? "character" : "onboarding"); window.scrollTo(0, 0); }} /> : view !== "landing" ? <Onboarding roadmapDone={roadmapDone} setRoadmapDone={setRoadmapDone} selectedCareer={selectedCareer} view={view} onBack={showLanding} onSelect={setView} resumeResult={resumeResult} avatar={avatar} questPlan={questPlan} pathChoice={pathChoice} onAvatarSelect={useCharacter} onGeneratePaths={generatePaths} onChoosePath={choosePath} profile={profile} builderStep={builderStep} onProfileChange={setProfile} onBuilderStep={setBuilderStep} onApprove={completeResumeCharacter} onReset={() => { setProfile(emptyProfile()); setBuilderStep(0); setQuestPlan(null); setPathChoice(null); }} /> : <main id="main">
         <section className="hero" id="top">
           <div className="eyebrow"><span /> Your career is not a straight line</div>
           <h1>Build your character.<br /><em>Explore your future.</em></h1>
@@ -748,7 +400,7 @@ export function App() {
             <button className="primary-button" type="button" onClick={showOnboarding}>Build my character <span aria-hidden="true">→</span></button>
             <button className="text-button" type="button" onClick={scrollToHow}>See how it works <span aria-hidden="true">↓</span></button>
           </div>
-          <p className="microcopy">No account required · Your data stays in this session</p>
+          <p className="microcopy">No account required · Drafts clear when you refresh or close this page</p>
 
           <div className="quest-card" aria-label="Example career journey map">
             <div className="card-topline">
@@ -771,6 +423,7 @@ export function App() {
           </div>
         </section>
 
+        <section className="mascot-invite"><JohnBusiness>Not sure where to begin? I’m John Business, your CareerQuest guide. Let’s discover what matters to you—one small step at a time.</JohnBusiness><button className="primary-button" onClick={openSurvey}>Find my direction · Take the survey →</button></section>
         <section className="journey-section" id="how">
           <div className="section-heading">
             <p className="kicker">A guided journey</p>
@@ -804,7 +457,8 @@ export function App() {
       <footer>
         <span>CareerQuest</span>
         <p>Educational guidance, not a guarantee of career outcomes.</p>
+        <button className="text-button" type="button" disabled={navigationLocked} onClick={() => { setView("sources"); window.scrollTo(0, 0); }}>Data sources and credits</button>
       </footer>
-    </div>
+    </div></NavigationLock.Provider>
   );
 }

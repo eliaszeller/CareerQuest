@@ -1,0 +1,11 @@
+O*NET-SOC Code,Title,Workplace Example,Element ID,Element Name,Hot Technology,In Demand
+15-2051.00,Data Scientists,Python,43232402,Development environment software,Y,Y
+15-2051.00,Data Scientists,Structured query language SQL,43232306,Data base user interface and query software,Y,Y
+15-2051.00,Data Scientists,Microsoft Excel,43232110,Spreadsheet software,Y,N
+15-2051.00,Data Scientists,Microsoft Power BI,43232314,Business intelligence and data analysis software,Y,N
+15-2051.00,Data Scientists,R,43232402,Development environment software,Y,N
+29-1141.00,Registered Nurses,Epic Systems,43231507,Medical software,Y,N
+29-1141.00,Registered Nurses,Microsoft Excel,43232110,Spreadsheet software,Y,N
+29-1141.00,Registered Nurses,Microsoft Word,43232106,Word processing software,Y,N
+47-2111.00,Electricians,Autodesk AutoCAD,43232604,Computer aided design CAD software,Y,N
+47-2111.00,Electricians,Rare Tool Suite,43232604,Computer aided design CAD software,N,N

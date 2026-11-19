@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from app.schemas.resume import ResumeDraft
+from app.services.skills import find_in_text, known_skill_terms
 
 SKILL_TERMS = {
     "Python", "JavaScript", "TypeScript", "React", "SQL", "Excel", "Tableau",
@@ -174,6 +175,16 @@ def _skills(text: str, skill_lines: list[str]) -> list[str]:
             and re.search(rf"\b{re.escape(term)}\b", text, re.I)
         ):
             found.append(term)
+            seen.add(key)
+
+    # With the O*NET career database built, also recognize its software names.
+    for name in find_in_text(text, known_skill_terms()):
+        key = name.casefold()
+        already_represented = any(
+            key in skill.casefold() or skill.casefold() in key for skill in found
+        )
+        if key not in seen and not already_represented:
+            found.append(name)
             seen.add(key)
     return found
 

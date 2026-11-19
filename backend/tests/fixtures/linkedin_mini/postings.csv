@@ -1,0 +1,10 @@
+job_id,company_name,title,description,normalized_salary,max_salary,min_salary,med_salary,pay_period,currency,location,formatted_experience_level,formatted_work_type,remote_allowed,listed_time,skills_desc,job_posting_url
+1,Acme Analytics,Senior Data Scientist,Build models in Python and SQL. Report with Microsoft Power BI.,150000,,,,YEARLY,USD,"New York, NY",Mid-Senior level,Full-time,1.0,1712000000000,,https://www.linkedin.com/jobs/view/1
+2,Beta Health,Data Scientist II,Python and Power BI dashboards for care teams.,,,,60,HOURLY,USD,Remote,Associate,Full-time,1.0,1712500000000,,https://www.linkedin.com/jobs/view/2
+3,Gamma AI,Machine Learning Scientist (Remote),"Python, SQL, and R for experiments.",,160000,120000,,YEARLY,USD,"Boston, MA",Mid-Senior level,Full-time,,1713000000000,,https://www.linkedin.com/jobs/view/3
+4,City Hospital,Registered Nurse - ICU,Chart in Epic Systems. Patient care in the ICU.,,,,45,HOURLY,USD,"Chicago, IL",Entry level,Full-time,,1713100000000,,https://www.linkedin.com/jobs/view/4
+5,County Clinic,RN Night Shift,Document care in Epic Systems.,,,,7000,MONTHLY,USD,"Austin, TX",Entry level,Part-time,,1712900000000,,https://www.linkedin.com/jobs/view/5
+6,Home Care Co,Staff Nurse,Use Excel for schedules.,90000,,,,YEARLY,USD,"Denver, CO",Associate,Full-time,,1712800000000,,https://www.linkedin.com/jobs/view/6
+7,Spark Electric,Journeyman Electrician,Read drawings in AutoCAD.,70000,,,,YEARLY,USD,"Phoenix, AZ",Associate,Full-time,,1712700000000,,https://www.linkedin.com/jobs/view/7
+8,Lakeside Crafts,Underwater Basket Weaver,Weave baskets.,40000,,,,YEARLY,USD,"Miami, FL",Entry level,Contract,,1712600000000,,https://www.linkedin.com/jobs/view/8
+9,Euro Data,Data Scientist,Python for analytics.,,,,90000,YEARLY,EUR,Berlin,Associate,Full-time,,1711000000000,,https://www.linkedin.com/jobs/view/9

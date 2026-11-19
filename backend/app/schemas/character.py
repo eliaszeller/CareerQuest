@@ -68,16 +68,46 @@ class StandardizedTestScore(StrictModel):
         return self
 
 
-class CharacterProfile(StrictModel):
+EntryCategory = Literal[
+    "education",
+    "experience",
+    "skills",
+    "interests",
+    "classes",
+    "hobbies",
+    "projects",
+    "certifications",
+]
+
+
+class CharacterEntry(StrictModel):
+    """The same editable record for manual input and extracted suggestions."""
+
     id: UUID = Field(default_factory=uuid4)
-    name: str = Field(min_length=1, max_length=80)
-    life_stage: LifeStage
-    education: list[str] = Field(default_factory=list, max_length=20)
-    experience: list[str] = Field(default_factory=list, max_length=50)
-    skills: list[str] = Field(default_factory=list, max_length=50)
-    interests: list[str] = Field(default_factory=list, max_length=30)
-    goals: list[str] = Field(default_factory=list, max_length=20)
-    traits: list[Trait] = Field(default_factory=list, max_length=11)
-    standardized_tests: list[StandardizedTestScore] = Field(default_factory=list, max_length=10)
+    category: EntryCategory
+    title: str = Field(min_length=1, max_length=160)
+    details: str = Field(default="", max_length=2000)
+    source: Literal["manual", "resume"] = "manual"
+    status: Literal["suggested", "confirmed"] = "confirmed"
+    evidence: Optional[str] = Field(default=None, max_length=500)
+
+
+class CharacterProfile(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    id: UUID = Field(default_factory=uuid4)
+    name: str = Field(default="", max_length=80)
+    life_stage: Optional[LifeStage] = None
+    goal: str = Field(default="", max_length=500)
+    entries: list[CharacterEntry] = Field(default_factory=list, max_length=200)
     approval_status: Literal["draft", "approved"] = "draft"
-    schema_version: str = "1.0"
+
+    @model_validator(mode="after")
+    def validate_review(self) -> CharacterProfile:
+        if len({entry.id for entry in self.entries}) != len(self.entries):
+            raise ValueError("Each entry must have a unique ID.")
+        if self.approval_status == "approved":
+            if not self.name or self.life_stage is None:
+                raise ValueError("Add a name and life stage before approving your character.")
+            if any(entry.status != "confirmed" for entry in self.entries):
+                raise ValueError("Confirm or remove every suggestion before approving.")
+        return self

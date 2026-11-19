@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "careerquest-api"
 version = "0.1.0"
 description = "CareerQuest API and deterministic simulation services"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "fastapi==0.115.12",
   "httpx==0.28.1",
@@ -21,6 +21,14 @@ dev = [
   "pytest==8.3.5",
   "pytest-cov==6.1.1",
   "ruff==0.11.10",
+]
+career = [
+  "joblib==1.5.2",
+  "scikit-learn==1.7.2",
+]
+# Optional: use the fine-tuned embedder for resume matching (pulls in PyTorch).
+finetune = [
+  "sentence-transformers>=3.3,<4",
 ]
 resume = [
   "PyMuPDF==1.25.5",

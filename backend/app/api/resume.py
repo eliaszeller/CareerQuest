@@ -8,7 +8,7 @@ from app.services.resume_profile import build_fallback_draft
 router = APIRouter(prefix="/resume", tags=["resume"])
 
 
-@router.post("/extract", response_model=ResumeUploadResponse)
+@router.post("/extract", response_model=ResumeUploadResponse, deprecated=True)
 async def extract_resume(
     file: UploadFile = File(...), settings: Settings = Depends(get_settings)
 ) -> ResumeUploadResponse:

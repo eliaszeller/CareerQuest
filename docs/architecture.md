@@ -22,5 +22,10 @@ Model processes are external dependencies and are not started by this repository
 
 ## Data boundaries
 
+The character-builder MVP currently uses stateless validation and browser-memory
+profile state, not database-backed sessions. Both creation routes use the versioned
+CharacterProfile v2 contract; TypeScript response types are generated from Pydantic.
+See [character-builder-mvp.md](character-builder-mvp.md) for implemented behavior.
+
 SQLite will contain curated career data and session-scoped application state. Uploaded files and extracted document text must never be written to SQLite. Resume and score-report processing will use permission-restricted temporary storage and unconditional cleanup.
 

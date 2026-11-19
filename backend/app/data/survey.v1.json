@@ -1,0 +1,391 @@
+{
+  "version": "careerquest-survey-1.0",
+  "title": "Find your direction",
+  "sections": [
+    {
+      "id": "people",
+      "title": "Working with people",
+      "domain": "Interpersonal skills",
+      "description": "Think about school, work, friendships, teams, or helping others."
+    },
+    {
+      "id": "self",
+      "title": "Knowing yourself",
+      "domain": "Intrapersonal skills",
+      "description": "Think about how you respond to challenges, feedback, and responsibilities."
+    },
+    {
+      "id": "technical",
+      "title": "Tools & problem-solving",
+      "domain": "Technical skills",
+      "description": "Consider what you have practiced or would enjoy practicing. Experience is not required."
+    },
+    {
+      "id": "personality",
+      "title": "Your working personality",
+      "domain": "Personality & work preferences",
+      "description": "Choose what feels like you today. There are no better or worse personalities."
+    },
+    {
+      "id": "learning",
+      "title": "How you like to learn",
+      "domain": "Learning preferences",
+      "description": "These are preferences, not fixed learning types. Different tasks may call for different approaches."
+    },
+    {
+      "id": "location",
+      "title": "Where life happens",
+      "domain": "Location preferences",
+      "description": "Describe the settings you prefer. These answers do not exclude any career category."
+    }
+  ],
+  "questions": [
+    {
+      "id": "q01",
+      "section": "people",
+      "text": "I listen carefully when someone has a concern and check that I understand.",
+      "weights": {
+        "Healthcare": 2,
+        "Education": 2,
+        "Law": 1,
+        "Political": 1
+      }
+    },
+    {
+      "id": "q02",
+      "section": "people",
+      "text": "I can explain an idea in a way that helps someone else understand it.",
+      "weights": {
+        "Education": 3,
+        "Business": 1,
+        "Law": 1,
+        "Military": 1
+      }
+    },
+    {
+      "id": "q03",
+      "section": "people",
+      "text": "I enjoy bringing people together to work toward a shared goal.",
+      "weights": {
+        "Business": 2,
+        "Military": 2,
+        "Political": 2,
+        "Education": 1
+      }
+    },
+    {
+      "id": "q04",
+      "section": "people",
+      "text": "When people disagree, I try to understand both sides before responding.",
+      "weights": {
+        "Law": 2,
+        "Political": 2,
+        "Healthcare": 1,
+        "Education": 1
+      }
+    },
+    {
+      "id": "q05",
+      "section": "people",
+      "text": "I feel comfortable offering practical help to someone who is struggling.",
+      "weights": {
+        "Healthcare": 3,
+        "Education": 2,
+        "Trades": 1
+      }
+    },
+    {
+      "id": "q06",
+      "section": "self",
+      "text": "I can notice when I am stressed and take steps to manage it.",
+      "weights": {
+        "Healthcare": 1,
+        "Military": 1,
+        "Law": 1,
+        "Business": 1,
+        "Education": 1,
+        "Trades": 1,
+        "Political": 1
+      }
+    },
+    {
+      "id": "q07",
+      "section": "self",
+      "text": "I usually follow through on responsibilities, even when the task is repetitive.",
+      "weights": {
+        "Trades": 2,
+        "Military": 2,
+        "Healthcare": 2,
+        "Business": 1
+      }
+    },
+    {
+      "id": "q08",
+      "section": "self",
+      "text": "I can use constructive feedback to change how I approach a task.",
+      "weights": {
+        "Healthcare": 1,
+        "Military": 1,
+        "Law": 1,
+        "Business": 1,
+        "Education": 1,
+        "Trades": 1,
+        "Political": 1
+      }
+    },
+    {
+      "id": "q09",
+      "section": "self",
+      "text": "I enjoy setting a goal and organizing the steps needed to reach it.",
+      "weights": {
+        "Business": 2,
+        "Military": 2,
+        "Trades": 1,
+        "Political": 1
+      }
+    },
+    {
+      "id": "q10",
+      "section": "self",
+      "text": "I am willing to keep investigating a problem when the answer is not obvious.",
+      "weights": {
+        "Law": 2,
+        "Healthcare": 2,
+        "Trades": 2,
+        "Business": 1
+      }
+    },
+    {
+      "id": "q11",
+      "section": "technical",
+      "text": "I enjoy working with numbers, spreadsheets, or data to understand a problem.",
+      "weights": {
+        "Business": 3,
+        "Healthcare": 1,
+        "Political": 1
+      }
+    },
+    {
+      "id": "q12",
+      "section": "technical",
+      "text": "I enjoy learning how tools, machines, or physical systems work.",
+      "weights": {
+        "Trades": 3,
+        "Military": 2,
+        "Healthcare": 1
+      }
+    },
+    {
+      "id": "q13",
+      "section": "technical",
+      "text": "I am interested in understanding the human body and how to support health.",
+      "weights": {
+        "Healthcare": 4
+      }
+    },
+    {
+      "id": "q14",
+      "section": "technical",
+      "text": "I enjoy comparing documents or sources and checking whether a claim is supported.",
+      "weights": {
+        "Law": 3,
+        "Political": 2,
+        "Education": 1,
+        "Business": 1
+      }
+    },
+    {
+      "id": "q15",
+      "section": "technical",
+      "text": "I enjoy creating instructions, demonstrations, or materials that help people learn.",
+      "weights": {
+        "Education": 4,
+        "Business": 1,
+        "Military": 1
+      }
+    },
+    {
+      "id": "q16",
+      "section": "personality",
+      "text": "I enjoy persuading others to support an idea, project, or initiative.",
+      "weights": {
+        "Business": 2,
+        "Political": 3,
+        "Law": 1
+      }
+    },
+    {
+      "id": "q17",
+      "section": "personality",
+      "text": "I prefer tasks with clear procedures and a well-defined chain of responsibility.",
+      "weights": {
+        "Military": 3,
+        "Trades": 2,
+        "Healthcare": 2
+      }
+    },
+    {
+      "id": "q18",
+      "section": "personality",
+      "text": "I enjoy trying new approaches when an existing way of doing something is not working.",
+      "weights": {
+        "Business": 2,
+        "Education": 2,
+        "Trades": 1,
+        "Political": 1
+      }
+    },
+    {
+      "id": "q19",
+      "section": "personality",
+      "text": "I am drawn to work that improves how communities or public institutions function.",
+      "weights": {
+        "Political": 4,
+        "Law": 1,
+        "Education": 1
+      }
+    },
+    {
+      "id": "q20",
+      "section": "personality",
+      "text": "I enjoy practical tasks where I can see a concrete result of my work.",
+      "weights": {
+        "Trades": 3,
+        "Healthcare": 1,
+        "Military": 1
+      }
+    },
+    {
+      "id": "q21",
+      "section": "learning",
+      "text": "Reading a clear explanation or seeing a diagram helps me get started.",
+      "weights": {}
+    },
+    {
+      "id": "q22",
+      "section": "learning",
+      "text": "Watching someone demonstrate a task helps me understand it.",
+      "weights": {}
+    },
+    {
+      "id": "q23",
+      "section": "learning",
+      "text": "Trying a task myself and learning from mistakes helps me make progress.",
+      "weights": {}
+    },
+    {
+      "id": "q24",
+      "section": "learning",
+      "text": "Discussing a topic or explaining it to someone else helps me learn.",
+      "weights": {}
+    },
+    {
+      "id": "q25",
+      "section": "learning",
+      "text": "A structured course with milestones and feedback helps me stay on track.",
+      "weights": {}
+    },
+    {
+      "id": "q26",
+      "section": "location",
+      "text": "Staying close to my current community is important to me.",
+      "weights": {}
+    },
+    {
+      "id": "q27",
+      "section": "location",
+      "text": "I would consider relocating for an opportunity that fits my goals.",
+      "weights": {}
+    },
+    {
+      "id": "q28",
+      "section": "location",
+      "text": "I would prefer to do at least some of my work remotely.",
+      "weights": {}
+    },
+    {
+      "id": "q29",
+      "section": "location",
+      "text": "I prefer smaller communities or rural settings over large cities.",
+      "weights": {}
+    },
+    {
+      "id": "q30",
+      "section": "location",
+      "text": "I would enjoy a role that includes regular travel or changing work locations.",
+      "weights": {}
+    }
+  ],
+  "careers": [
+    {
+      "id": "Healthcare",
+      "description": "Support health and wellbeing through care, science, technology, or administration.",
+      "examples": [
+        "Nursing",
+        "Medical laboratory work",
+        "Health information"
+      ],
+      "next_step": "Talk to someone in a healthcare role about their everyday tasks and training."
+    },
+    {
+      "id": "Business",
+      "description": "Help organizations operate, solve problems, serve customers, and develop ideas.",
+      "examples": [
+        "Operations",
+        "Marketing",
+        "Accounting"
+      ],
+      "next_step": "Plan a small project: define the customer, cost, timeline, and intended benefit."
+    },
+    {
+      "id": "Education",
+      "description": "Help people learn and grow in classrooms, workplaces, or communities.",
+      "examples": [
+        "Teaching",
+        "Training and development",
+        "Student support"
+      ],
+      "next_step": "Explain a topic you enjoy to someone else and ask what helped them understand."
+    },
+    {
+      "id": "Military",
+      "description": "Explore service roles involving teamwork, technical work, logistics, and structured responsibility.",
+      "examples": [
+        "Logistics",
+        "Communications",
+        "Technical maintenance"
+      ],
+      "next_step": "Research different service roles, commitments, and eligibility requirements using official sources."
+    },
+    {
+      "id": "Law",
+      "description": "Explore legal research, advocacy, procedures, and support for people navigating legal systems.",
+      "examples": [
+        "Paralegal work",
+        "Legal research",
+        "Legal practice"
+      ],
+      "next_step": "Compare two accounts of a public legal issue and separate claims from supporting evidence."
+    },
+    {
+      "id": "Trades",
+      "description": "Build, install, repair, and maintain the physical systems people rely on.",
+      "examples": [
+        "Electrical work",
+        "Carpentry",
+        "HVAC"
+      ],
+      "next_step": "Explore a local apprenticeship or observe a qualified tradesperson working safely."
+    },
+    {
+      "id": "Political",
+      "description": "Explore public policy, civic service, government administration, and community representation.",
+      "examples": [
+        "Public administration",
+        "Policy research",
+        "Community organizing"
+      ],
+      "next_step": "Attend or watch a local public meeting and identify one issue you would like to understand."
+    }
+  ]
+}

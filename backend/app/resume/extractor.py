@@ -9,11 +9,13 @@ import fitz
 from docx import Document
 from fastapi import UploadFile
 from pypdf import PdfReader
+from starlette.concurrency import run_in_threadpool
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 MAX_TEXT_CHARACTERS = 100_000
 MAX_DOCX_ENTRIES = 500
 MAX_DOCX_EXPANDED_BYTES = 20 * 1024 * 1024
+MAX_PDF_PAGES = 40
 
 
 class ResumeError(ValueError):
@@ -46,15 +48,20 @@ def _extract_pdf(path: Path) -> str:
                 "Encrypted PDFs are not supported. Save an unencrypted copy "
                 "or enter details manually."
             )
-        document = fitz.open(path)
-        if document.needs_pass:
-            raise ResumeError(
-                "Encrypted PDFs are not supported. Save an unencrypted copy "
-                "or enter details manually."
-            )
-        text = "\n".join(page.get_text("text") for page in document)
-        document.close()
-        return text
+        with fitz.open(path) as document:
+            if document.needs_pass:
+                raise ResumeError("Save an unencrypted PDF or enter details manually.")
+            if len(document) > MAX_PDF_PAGES:
+                raise ResumeError("Use a résumé with 40 pages or fewer.")
+            pages = []
+            length = 0
+            for page in document:
+                text = page.get_text("text", sort=True)
+                length += len(text)
+                if length > MAX_TEXT_CHARACTERS:
+                    raise ResumeError("This document contains too much text. Use a shorter résumé.")
+                pages.append(text)
+            return "\n".join(pages)
     except ResumeError:
         raise
     except Exception as exc:
@@ -107,7 +114,9 @@ def extract_text(path: Path, file_type: str) -> str:
     normalized = normalized.replace("\uf0b7", "•").strip()
     if not normalized:
         raise ResumeError("No readable text was found. Try another file or enter details manually.")
-    return normalized[:MAX_TEXT_CHARACTERS]
+    if len(normalized) > MAX_TEXT_CHARACTERS:
+        raise ResumeError("This document contains too much text. Use a shorter résumé.")
+    return normalized
 
 
 async def process_upload(upload: UploadFile, max_bytes: int) -> tuple[str, str]:
@@ -126,5 +135,5 @@ async def process_upload(upload: UploadFile, max_bytes: int) -> tuple[str, str]:
     with tempfile.TemporaryDirectory(prefix="careerquest-resume-") as temp_dir:
         path = Path(temp_dir) / f"resume{file_type}"
         path.write_bytes(data)
-        text = extract_text(path, file_type)
+        text = await run_in_threadpool(extract_text, path, file_type)
     return filename, text

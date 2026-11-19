@@ -1,0 +1,9 @@
+O*NET-SOC Code,Title,Element ID,Element Name,Scale ID,Scale Name,Data Value,N,Standard Error,Lower CI Bound,Upper CI Bound,Recommend Suppress,Not Relevant,Date,Domain Source
+15-2051.00,Data Scientists,2.A.1.e,Mathematics,IM,Importance,4.25,8,0.2,3.8,4.6,N,,08/2026,Analyst
+15-2051.00,Data Scientists,2.A.1.e,Mathematics,LV,Level,5.12,8,0.3,4.5,5.7,N,N,08/2026,Analyst
+15-2051.00,Data Scientists,2.A.2.a,Critical Thinking,IM,Importance,2.50,8,0.2,2.1,2.9,N,,08/2026,Analyst
+15-2051.00,Data Scientists,2.A.2.a,Critical Thinking,LV,Level,3.00,8,0.3,2.4,3.6,N,N,08/2026,Analyst
+29-1141.00,Registered Nurses,2.A.1.b,Active Listening,IM,Importance,4.00,8,0.2,3.6,4.4,N,,08/2026,Analyst
+29-1141.00,Registered Nurses,2.A.1.b,Active Listening,LV,Level,4.10,8,0.3,3.5,4.7,Y,N,08/2026,Analyst
+47-2111.00,Electricians,2.A.1.e,Mathematics,IM,Importance,3.10,8,0.2,2.7,3.5,N,,08/2026,Analyst
+47-2111.00,Electricians,2.A.1.e,Mathematics,LV,Level,1.00,8,0.3,0.4,1.6,N,Y,08/2026,Analyst

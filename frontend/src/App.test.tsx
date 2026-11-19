@@ -1,8 +1,23 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { App, groupEducation, groupExperience, resolveOrganizationDomain } from "./App";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { App } from "./App";
 
-describe("landing page", () => {
+afterEach(() => vi.unstubAllGlobals());
+
+async function manualCharacter() {
+  vi.stubGlobal("fetch", vi.fn(async (_url, options) => ({ ok: true, json: async () => ({ ...JSON.parse(options.body), approval_status: "approved" }) })));
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: /start your quest/i }));
+  fireEvent.click(screen.getByText("Build my character", { selector: "strong" }).closest("button")!);
+  fireEvent.change(screen.getByLabelText(/what should we call/i), { target: { value: "Jordan Lee" } });
+  fireEvent.click(screen.getByRole("radio", { name: "College" }));
+  fireEvent.click(screen.getByRole("button", { name: /04 Review/ }));
+  fireEvent.click(screen.getByRole("checkbox", { name: /reviewed my character/ }));
+  fireEvent.click(screen.getByRole("button", { name: /confirm my character/i }));
+  await screen.findByRole("heading", { name: /choose your pathfinder/i });
+}
+
+describe("landing page and unified onboarding", () => {
   it("introduces CareerQuest and its four-step journey", () => {
     render(<App />);
     expect(screen.getByRole("heading", { name: /build your character/i })).toBeInTheDocument();
@@ -10,144 +25,37 @@ describe("landing page", () => {
     expect(screen.getAllByRole("article")).toHaveLength(4);
   });
 
-  it("opens onboarding and both character creation routes", () => {
+  it("opens both routes into the same editor", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: /start your quest/i }));
-    expect(screen.getByRole("heading", { name: /how would you like/i })).toBeInTheDocument();
-
     fireEvent.click(screen.getByText("Build my character", { selector: "strong" }).closest("button")!);
-    expect(screen.getByRole("heading", { name: /tell us where/i })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /back to options/i }));
+    expect(screen.getByRole("heading", { name: /meet your next chapter/i })).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /back to options/i })[0]);
     fireEvent.click(screen.getByText("Build from my résumé", { selector: "strong" }).closest("button")!);
-    expect(screen.getByRole("heading", { name: /bring what you've already done/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /meet your next chapter/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/choose a résumé/i)).toBeInTheDocument();
   });
 
-  it("continues from manual setup to character selection", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /start your quest/i }));
-    fireEvent.click(screen.getByText("Build my character", { selector: "strong" }).closest("button")!);
-
-    fireEvent.change(screen.getByLabelText(/what should we call/i), { target: { value: "Jordan Lee" } });
-    fireEvent.click(screen.getByRole("radio", { name: "College" }));
-    const continueButton = screen.getByRole("button", { name: /continue/i });
-    expect(continueButton).toBeEnabled();
-    fireEvent.click(continueButton);
-
-    expect(screen.getByRole("heading", { name: /choose your pathfinder/i })).toBeInTheDocument();
+  it("approves a minimal manual profile and lets the user edit it later", async () => {
+    await manualCharacter();
     expect(screen.getAllByText("Jordan Lee")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: /edit my character/i }));
+    expect(screen.getByRole("heading", { name: /make it yours/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /edit basics/i }));
+    expect(screen.getByLabelText(/what should we call/i)).toHaveValue("Jordan Lee");
   });
 
-  it("opens the interactive quest screen after character selection", () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /start your quest/i }));
-    fireEvent.click(screen.getByText("Build my character", { selector: "strong" }).closest("button")!);
-    fireEvent.change(screen.getByLabelText(/what should we call/i), { target: { value: "Jordan Lee" } });
-    fireEvent.click(screen.getByRole("radio", { name: "College" }));
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+  it("continues with a confirmed profile through the existing quest", async () => {
+    await manualCharacter();
     fireEvent.click(screen.getByRole("button", { name: /use this character/i }));
-
     expect(screen.getByRole("heading", { name: /choose your quest/i })).toBeInTheDocument();
-    expect(screen.getByText(/jordan lee’s trail/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /earn a promotion/i }));
-    expect(screen.getByRole("heading", { name: /earn a promotion/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /generate my 3 paths/i }));
-    expect(screen.getByRole("heading", { name: /three ways up/i })).toBeInTheDocument();
     expect(document.querySelectorAll(".path-option")).toHaveLength(3);
     fireEvent.click(screen.getByRole("button", { name: /continue to simulation/i }));
-    expect(screen.getByRole("heading", { name: /test your route/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /co-lead the project/i }));
     expect(screen.getByRole("status")).toHaveTextContent(/build credibility/i);
     fireEvent.click(screen.getByRole("button", { name: /next decision/i }));
     expect(screen.getByText(/offer tradeoff/i)).toBeInTheDocument();
-  });
-});
-
-describe("résumé education formatting", () => {
-  it("groups institutions, locations, degrees, dates, and coursework", () => {
-    expect(groupEducation([
-      "University of Colorado Boulder - Leeds School of Business",
-      "Boulder, CO",
-      "MS, Business Analytics (Healthcare Analytics Focus)",
-      "Expected May 2027",
-      "Relevant coursework: Machine Learning in Python; NLP for Healthcare Analytics",
-    ])).toEqual([{
-      institution: "University of Colorado Boulder - Leeds School of Business",
-      location: "Boulder, CO",
-      degree: "MS, Business Analytics (Healthcare Analytics Focus)",
-      date: "Exp May 2027",
-      details: ["Relevant coursework: Machine Learning in Python; NLP for Healthcare Analytics"],
-    }]);
-  });
-
-  it("separates an institution from a location on the same PDF row", () => {
-    expect(groupEducation([
-      "University of Colorado Boulder - Leeds School of Business  Boulder, CO",
-      "MS, Business Analytics (Healthcare Analytics Focus)",
-      "Expected May 2027",
-    ])[0]).toMatchObject({
-      institution: "University of Colorado Boulder - Leeds School of Business",
-      location: "Boulder, CO",
-      degree: "MS, Business Analytics (Healthcare Analytics Focus)",
-    });
-  });
-});
-
-describe("résumé experience formatting", () => {
-  it("groups employers and joins wrapped accomplishment lines", () => {
-    expect(groupExperience([
-      "Mike Maroone Automotive",
-      "Colorado Springs, CO",
-      "Business Analyst Intern",
-      "• Analyze more than $100M in vehicle inventory and recommend actions",
-      "to improve working capital and merchandising performance.",
-      "\uf0b7 Integrate marketing spend and sales data to evaluate campaign ROI.",
-    ])).toEqual([{
-      company: "Mike Maroone Automotive",
-      location: "Colorado Springs, CO",
-      role: "Business Analyst Intern",
-      accomplishments: [
-        "Analyze more than $100M in vehicle inventory and recommend actions to improve working capital and merchandising performance.",
-        "Integrate marketing spend and sales data to evaluate campaign ROI.",
-      ],
-    }]);
-  });
-
-  it("recognizes employers when PDF extraction puts the location on the same row", () => {
-    expect(groupExperience([
-      "Mike Maroone Automotive  Colorado Springs, CO",
-      "Business Analyst Intern",
-      "• Analyze more than $100M in vehicle inventory.",
-      "Amazon  Colorado Springs, CO",
-      "Area Manager | Management and Operations Intern · Jun 2025-Jun 2026",
-      "• Designed Excel and VBA reporting workflows.",
-    ])).toEqual([
-      {
-        company: "Mike Maroone Automotive",
-        location: "Colorado Springs, CO",
-        role: "Business Analyst Intern",
-        accomplishments: ["Analyze more than $100M in vehicle inventory."],
-      },
-      {
-        company: "Amazon",
-        location: "Colorado Springs, CO",
-        role: "Area Manager | Management and Operations Intern",
-        date: "Jun 2025-Jun 2026",
-        accomplishments: ["Designed Excel and VBA reporting workflows."],
-      },
-    ]);
-  });
-});
-
-describe("organization logo matching", () => {
-  it("resolves known résumé organizations to official domains", () => {
-    expect(resolveOrganizationDomain("University of Colorado Boulder - Leeds School of Business")).toBe("colorado.edu");
-    expect(resolveOrganizationDomain("Mike Maroone Automotive")).toBe("mikemaroonecolorado.com");
-    expect(resolveOrganizationDomain("Amazon")).toBe("amazon.com");
-    expect(resolveOrganizationDomain("Amazon  Colorado Springs, CO")).toBe("amazon.com");
-  });
-
-  it("leaves unknown organizations for provider name lookup", () => {
-    expect(resolveOrganizationDomain("A New Local Employer")).toBeNull();
   });
 });

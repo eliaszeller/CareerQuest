@@ -2,38 +2,36 @@ name: CI
 
 on:
   push:
-    paths: ["careerquest/**"]
   pull_request:
-    paths: ["careerquest/**"]
 
 jobs:
   backend:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: careerquest/backend
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev,resume,career]"
       - run: ruff check .
       - run: pytest --cov=app
+      - run: python scripts/export_career_contract.py --check
 
   frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: careerquest/frontend
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: careerquest/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm test -- --run
+      - run: npm run test:unit
       - run: npm run build
-
