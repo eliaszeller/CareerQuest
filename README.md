@@ -121,6 +121,31 @@ Restart the backend. The first résumé upload afterwards takes about a minute w
 
 To retrain it instead: from `backend`, run `python scripts/build_finetune_pairs.py`. Then run `notebooks/finetune_embedder.ipynb` on Google Colab with a GPU runtime, uploading `corpus.jsonl`, `train.jsonl` and `eval.jsonl` from `data/processed/finetune/`. It takes about 2 minutes on an A100 and 15 minutes on a free T4.
 
+## Try the product
+
+A 10-minute walkthrough once setup is done:
+
+1. **Start both servers.** In Git Bash window 1, from `backend` with the venv active, run `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000`. In window 2, from `frontend`, run `npm run dev -- --host 127.0.0.1`. Then open http://127.0.0.1:5173.
+2. **Take the survey (optional).** Click **Career survey** in the top bar and answer the 30 statements. Your top career fields carry into the quest's role suggestions.
+3. **Build your character.** Click **Start your quest**, choose the résumé option, and upload `backend/tests/fixtures/sample-resume.txt` (a made-up data-analytics student) or your own résumé. Review and edit each extracted item, then approve.
+   - **Expect:** a "Where your résumé points" box with résumé categories and matching O\*NET occupations. For the sample résumé these should be data or analyst roles.
+4. **Quest.** Pick a goal and a target role (for example "Data Analyst"), your priorities, budget and horizon, then click **Generate my 3 paths**.
+5. **Paths.** At the top, the **Real-world check** panel shows the matched O\*NET occupation, the number of postings analyzed, the middle-half pay range, your skill match %, the skills you already show, the skills to build, and example postings. Below it, **Why this could fit** gives 3 to 5 points, each citing numbered facts. Open "Facts used" to see them. Pick a path to continue.
+6. **Simulation.** Make a few choices to see the trade-offs, then click **View my roadmap**.
+7. **Roadmap.** You get 12 actions over 90 days. With career data built, "Days 8–30" starts with "Build evidence for" your top missing skill.
+8. **Sources.** Click **Data sources and credits** in the footer to see every dataset, its license and the required credits.
+
+**When something is missing:**
+
+| Missing | What you'll see |
+| --- | --- |
+| O\*NET database (step 5) | The Real-world check says the data isn't built yet. Paths show illustrative numbers, and the roadmap uses generic actions. |
+| Job postings (step 6) | The Real-world check shows skills but "Not built" for postings and "Not enough data" for pay. |
+| Résumé classifier (step 7) | No résumé categories in "Where your résumé points". Occupation matches still appear if O\*NET is built. |
+| Embedder (step 8) | Occupation matches use TF-IDF instead, so they are less accurate but still work. |
+| Ollama or another text model | "Why this could fit" shows a standard summary, and "Facts used" says "standard summary" instead of "written by …". |
+| Backend not running | Résumé upload fails, and the Real-world check says the data isn't built yet. Check that window 1 is still running. |
+
 ## Next step for the group: AI-written explanations
 
 "Why this could fit" on the Paths screen shows a standard summary until a local text model is connected. To connect one with [Ollama](https://ollama.com):
@@ -137,21 +162,23 @@ Any server that accepts OpenAI-style `/v1/chat/completions` requests works, incl
 
 ## Test
 
+Run these from the repo root, with the backend venv active for the Python lines:
+
 ```bash
 cd backend
-pytest
-ruff check .
-python scripts/export_character_contract.py --check
-python scripts/export_career_contract.py --check
-python scripts/export_survey_contract.py --check
+pytest                                               # runs all backend tests on small sample data (no real datasets needed)
+ruff check .                                         # checks the Python code for style problems and common bugs
+python scripts/export_character_contract.py --check  # confirms the frontend's character types still match the backend
+python scripts/export_career_contract.py --check     # same check for the career data types
+python scripts/export_survey_contract.py --check     # same check for the survey catalog and types
 cd ../frontend
-npm run test:unit
-npm run build
-npx playwright install chromium
-npm run test:e2e
+npm run test:unit                                    # runs the frontend unit tests
+npm run build                                        # type-checks the frontend and builds it, failing on any error
+npx playwright install chromium                      # one-time: downloads the browser used for end-to-end tests
+npm run test:e2e                                     # clicks through the app in a real browser (needs the steps above)
 ```
 
-Tests use small fixtures and never need the real datasets. CI runs the unit tests on every push.
+If a `--check` fails after you change a backend schema, run the same script without `--check` to regenerate the types. CI runs everything except the end-to-end tests on every push.
 
 ## Privacy and data
 
